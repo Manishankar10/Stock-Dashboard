@@ -3,7 +3,7 @@
 // Institutional Offline Resilience & App Shell Caching
 // =========================================================
 
-const CACHE_VERSION = 'v1.1.5';
+const CACHE_VERSION = 'v1.1.4';
 const STATIC_CACHE = `capital-desk-static-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `capital-desk-runtime-${CACHE_VERSION}`;
 
@@ -71,15 +71,6 @@ self.addEventListener('fetch', (event) => {
 
     // Bypass non-GET requests (e.g. POST / PUT / DELETE)
     if (request.method !== 'GET') {
-        return;
-    }
-
-    // Bypass live background job polling & heavy strategy endpoints so SW never intercepts or caches them
-    if (
-        url.pathname.startsWith('/api/momentum-smallcases/jobs/') ||
-        url.pathname.startsWith('/api/momentum-smallcases/performance-graph/') ||
-        url.pathname.startsWith('/api/momentum-smallcases/strategies')
-    ) {
         return;
     }
 

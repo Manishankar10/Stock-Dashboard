@@ -473,8 +473,6 @@ def run_all_strategy_api(strategy_id):
         stepup = float(body.get("stepup_amount") or body.get("stepup_per_rebalance") or 0.0)
         up_to = body.get("up_to_date")
         trim_existing = body.get("trim_existing")
-        raw_chunk = body.get("chunk_size", 8)
-        chunk_size = int(raw_chunk) if raw_chunk not in (None, "", 0, "0", "all") else None
         
         if request.args.get("sync") == "1":
             result = run_strategy_all_rebalances(
@@ -490,25 +488,15 @@ def run_all_strategy_api(strategy_id):
                 "init_executed": result["init_executed"],
                 "rebalances_executed": result["rebalances_executed"],
                 "total_runs_executed": result["total_runs_executed"],
-                "has_more": result.get("has_more", False),
-                "next_rebalance_date": result.get("next_rebalance_date"),
                 "message": result["message"]
             })
         
-        job_id = start_async_execution_job(
-            "RUN_ALL",
-            strategy_id,
-            username=user,
-            stepup_per_rebalance=stepup,
-            up_to_date=up_to,
-            trim_existing=trim_existing,
-            chunk_size=chunk_size
-        )
+        job_id = start_async_execution_job("RUN_ALL", strategy_id, username=user, stepup_per_rebalance=stepup, up_to_date=up_to, trim_existing=trim_existing)
         return jsonify({
             "success": True,
             "async": True,
             "job_id": job_id,
-            "message": "Run All chunk execution started"
+            "message": "Run All execution started"
         }), 202
     except ValueError as ve:
         return jsonify({"success": False, "error": str(ve)}), 400
@@ -526,29 +514,19 @@ def run_all_strategy_api(strategy_id):
 
 @momentum_smallcases_bp.route("/api/momentum-smallcases/jobs/<job_id>", methods=["GET"])
 def get_job_status_api(job_id):
-    """Returns lightweight execution status for an async momentum job across workers."""
+    """Returns execution status for an async momentum job, safely reloading across workers."""
     user = session.get("username") or "admin"
-    include_strategy = request.args.get("include_strategy") == "1"
     job = get_execution_job_status(job_id)
     if job:
-        if job.get("status") == "COMPLETED":
-            compact_result = {
-                "success": True,
-                "runs_count": job.get("runs_count"),
-                "init_executed": bool(job.get("init_executed", False)),
-                "rebalances_executed": int(job.get("rebalances_executed", 0)),
-                "total_runs_executed": int(job.get("total_runs_executed", 0)),
-                "has_more": bool(job.get("has_more", False)),
-                "next_rebalance_date": job.get("next_rebalance_date"),
-                "message": job.get("message") or "Execution completed."
-            }
-            if include_strategy and job.get("strategy_id"):
-                strat = get_user_strategy(job["strategy_id"], username=job.get("username") or user)
-                if strat:
-                    compact_result["strategy"] = strat
-            job["result"] = compact_result
-        else:
-            job["result"] = None
+        # Cross-worker poll: attach fresh strategy from storage if completed in peer worker
+        if job.get("status") == "COMPLETED" and job.get("result") is None and job.get("strategy_id"):
+            strat = get_user_strategy(job["strategy_id"], username=job.get("username") or user)
+            if strat:
+                job["result"] = {
+                    "success": True,
+                    "strategy": strat,
+                    "message": "Execution completed."
+                }
         return jsonify({"success": True, "job": job})
 
     strategy_id = request.args.get("strategy_id")
@@ -559,22 +537,17 @@ def get_job_status_api(job_id):
             runs_len = len(strat.get("runs") or [])
             completed_match = (runs_len >= min_runs) if min_runs is not None else (runs_len > 0)
             if completed_match:
-                compact_result = {
-                    "success": True,
-                    "runs_count": runs_len,
-                    "next_rebalance_date": strat.get("next_rebalance_date"),
-                    "message": "Execution already completed."
-                }
-                if include_strategy:
-                    compact_result["strategy"] = strat
                 return jsonify({
                     "success": True,
                     "job": {
                         "id": job_id,
                         "status": "COMPLETED",
                         "strategy_id": strategy_id,
-                        "runs_count": runs_len,
-                        "result": compact_result
+                        "result": {
+                            "success": True,
+                            "strategy": strat,
+                            "message": "Execution already completed."
+                        }
                     }
                 })
     return jsonify({"success": False, "error": "Job not found"}), 404

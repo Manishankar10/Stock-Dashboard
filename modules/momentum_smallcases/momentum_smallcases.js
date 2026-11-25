@@ -153,24 +153,13 @@
         return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="currentColor" style="display: inline-block; vertical-align: middle; ${extraStyle}"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>`;
     }
 
-    // Robust JSON fetch wrapper that intercepts 429/502/504 and non-JSON error pages
+    // Robust JSON fetch wrapper that intercepts 502/504 gateway timeouts and non-JSON error pages
     async function safeFetchJson(url, options = {}) {
         let res;
         try {
             res = await fetch(url, options);
         } catch (netErr) {
-            const err = new Error('Network error or server unreachable: ' + (netErr.message || 'connection failed'));
-            err.isNetworkError = true;
-            throw err;
-        }
-
-        const retryAfterRaw = res.headers ? res.headers.get('Retry-After') : null;
-        let retryAfterSeconds = null;
-        if (retryAfterRaw) {
-            const parsedSec = Number(retryAfterRaw);
-            if (!isNaN(parsedSec) && parsedSec > 0) {
-                retryAfterSeconds = parsedSec;
-            }
+            throw new Error('Network error or server unreachable: ' + (netErr.message || 'connection failed'));
         }
 
         let data = null;
@@ -186,20 +175,13 @@
         if (data === null) {
             const rawText = await res.text().catch(() => '');
             const cleanText = rawText.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 160);
-            let msg;
-            if (res.status === 429) {
-                msg = '429 Too Many Requests: Rate limit reached. Retrying after backoff...';
-            } else if (res.status === 502) {
-                msg = '502 Bad Gateway: Upstream connection timed out or server restarted. Please check if the Flask server is running.';
-            } else if (res.status === 504) {
-                msg = '504 Gateway Timeout: The calculation took longer than the proxy timeout limit. Please retry now that data is partially cached.';
-            } else {
-                msg = `Server returned HTTP ${res.status} (${res.statusText || 'Error'})${cleanText ? ': ' + cleanText : ''}`;
+            if (res.status === 502) {
+                throw new Error('502 Bad Gateway: Upstream connection timed out or server restarted. Please check if the Flask server is running.');
             }
-            const err = new Error(msg);
-            err.status = res.status;
-            err.retryAfterSeconds = retryAfterSeconds;
-            throw err;
+            if (res.status === 504) {
+                throw new Error('504 Gateway Timeout: The calculation took longer than the proxy timeout limit. Please retry now that data is partially cached.');
+            }
+            throw new Error(`Server returned HTTP ${res.status} (${res.statusText || 'Error'})${cleanText ? ': ' + cleanText : ''}`);
         }
 
         if (!res.ok) {
@@ -207,62 +189,18 @@
             const err = new Error(msg);
             err.data = data;
             err.status = res.status;
-            err.retryAfterSeconds = retryAfterSeconds;
             throw err;
         }
 
         return data;
     }
 
-    function isTransientHttpError(err) {
-        if (!err) return false;
-        if (err.isNetworkError || !err.status) return true;
-        return err.status === 429 || err.status === 502 || err.status === 503 || err.status === 504;
-    }
-
-    function computeRetryDelayMs(err, attempt = 1, baseMs = 3000) {
-        if (err && err.status === 429) {
-            if (err.retryAfterSeconds && err.retryAfterSeconds > 0) {
-                return Math.min(Math.max(err.retryAfterSeconds * 1000, 3000), 30000);
-            }
-            const exp429 = Math.min(5000 * Math.pow(2, Math.max(0, attempt - 1)), 25000);
-            return exp429 + Math.floor(Math.random() * 400);
-        }
-        const exp = Math.min(baseMs * Math.pow(2, Math.max(0, attempt - 1)), 15000);
-        return exp + Math.floor(Math.random() * 300);
-    }
-
-    async function fetchJsonWithRetry(url, options = {}, { maxRetries = 4, onRetry = null } = {}) {
-        let lastErr = null;
-        for (let attempt = 0; attempt <= maxRetries; attempt++) {
-            try {
-                return await safeFetchJson(url, options);
-            } catch (err) {
-                lastErr = err;
-                if (!isTransientHttpError(err) || attempt >= maxRetries) {
-                    throw err;
-                }
-                const delayMs = computeRetryDelayMs(err, attempt + 1, 3000);
-                if (typeof onRetry === 'function') {
-                    try {
-                        onRetry(err, attempt + 1, delayMs);
-                    } catch (_) {}
-                }
-                await new Promise(r => setTimeout(r, delayMs));
-            }
-        }
-        throw lastErr;
-    }
-
-    // Polls background execution job every 3s with 429/502 backoff and cross-worker recovery
-    async function pollJobUntilComplete(jobId, statusTitle = 'Executing...', strategyId = null, expectedMinRuns = null, options = {}) {
+    // Polls background execution job until completion (immune to reverse proxy / Gunicorn 502/504 timeouts)
+    async function pollJobUntilComplete(jobId, statusTitle = 'Executing...', strategyId = null, expectedMinRuns = null) {
         const startTime = Date.now();
-        const maxPollMs = Number(options.maxPollMs || 300000); // 5 minute max safety threshold
-        const pollInterval = Number(options.pollIntervalMs || 3000); // 3s steady poll interval
-        const onProgress = typeof options.onProgress === 'function' ? options.onProgress : null;
+        const maxPollMs = 300000; // 5 minute max safety threshold
+        const pollInterval = 1100; // 1.1s poll interval
         let consecutiveNotFound = 0;
-        let consecutiveRateLimits = 0;
-        let consecutiveGatewayErrs = 0;
 
         while (Date.now() - startTime < maxPollMs) {
             await new Promise(r => setTimeout(r, pollInterval));
@@ -275,77 +213,36 @@
                 res = await safeFetchJson(`/api/momentum-smallcases/jobs/${encodeURIComponent(jobId)}${queryStr}`);
             } catch (pollErr) {
                 const errMsg = String(pollErr.message || '');
-                if (pollErr.status === 429) {
-                    consecutiveRateLimits++;
-                    if (consecutiveRateLimits >= 6) {
-                        throw pollErr;
-                    }
-                    const waitMs = computeRetryDelayMs(pollErr, consecutiveRateLimits, 5000);
-                    if (onProgress) {
-                        onProgress({
-                            status: 'RUNNING',
-                            progress: `Rate limit (429) — backing off ${(waitMs / 1000).toFixed(0)}s before resuming poll...`
-                        });
-                    }
-                    await new Promise(r => setTimeout(r, waitMs));
-                    continue;
-                }
-
                 if (pollErr.status === 404 || errMsg.includes('Job not found')) {
                     consecutiveNotFound++;
                     if (consecutiveNotFound >= 3) {
                         // Job was not found 3 times in a row. Check if strategy state has already reached expectedMinRuns
                         if (strategyId) {
                             try {
-                                const checkStrat = await fetchJsonWithRetry(`/api/momentum-smallcases/strategies/${encodeURIComponent(strategyId)}`, {}, { maxRetries: 2 });
+                                const checkStrat = await safeFetchJson(`/api/momentum-smallcases/strategies/${encodeURIComponent(strategyId)}`);
                                 const runsCount = (checkStrat && checkStrat.strategy && Array.isArray(checkStrat.strategy.runs)) ? checkStrat.strategy.runs.length : 0;
                                 const metTarget = expectedMinRuns != null ? (runsCount >= expectedMinRuns) : (runsCount > 0);
                                 if (metTarget) {
                                     console.info('Job not in memory but strategy has updated runs. Resolving successfully.');
-                                    return { success: true, runs_count: runsCount, strategy: checkStrat.strategy, message: 'Execution completed.' };
+                                    return { success: true, strategy: checkStrat.strategy, message: 'Execution completed.' };
                                 }
                             } catch (_) {}
                         }
                         throw new Error('The execution job was interrupted (server was restarted or worker recycled). Please retry the rebalance.');
                     }
-                    continue;
                 }
-
-                if (isTransientHttpError(pollErr)) {
-                    consecutiveGatewayErrs++;
-                    const waitMs = computeRetryDelayMs(pollErr, consecutiveGatewayErrs, 3000);
-                    if (onProgress) {
-                        onProgress({
-                            status: 'RUNNING',
-                            progress: `Temporary ${pollErr.status || 'network'} error — retrying in ${(waitMs / 1000).toFixed(0)}s...`
-                        });
-                    }
-                    if (consecutiveGatewayErrs >= 5) {
-                        throw pollErr;
-                    }
-                    await new Promise(r => setTimeout(r, waitMs));
-                    continue;
-                }
-
                 console.warn('Transient polling error:', pollErr);
                 continue;
             }
 
             consecutiveNotFound = 0;
-            consecutiveRateLimits = 0;
-            consecutiveGatewayErrs = 0;
             if (!res || !res.success || !res.job) {
                 continue;
             }
 
             const job = res.job;
-            if (onProgress && job.progress) {
-                try {
-                    onProgress(job);
-                } catch (_) {}
-            }
             if (job.status === 'COMPLETED') {
-                return job.result || { success: true, runs_count: job.runs_count, has_more: Boolean(job.has_more), next_rebalance_date: job.next_rebalance_date, message: job.message || 'Execution completed.' };
+                return job.result;
             }
             if (job.status === 'FAILED') {
                 throw new Error(job.error || 'Execution failed');
@@ -362,7 +259,7 @@
             return payload;
         }
         if (strategyId) {
-            const fetched = await fetchJsonWithRetry(`/api/momentum-smallcases/strategies/${encodeURIComponent(strategyId)}`, {}, { maxRetries: 3 });
+            const fetched = await safeFetchJson(`/api/momentum-smallcases/strategies/${encodeURIComponent(strategyId)}`);
             if (fetched && fetched.strategy) {
                 return fetched.strategy;
             }
@@ -2305,156 +2202,127 @@
 
         // Keep modal open and display brand loader inside it
         setSmallcaseModalLoader('runAllRebalanceModal', true, {
-            title: 'Starting Rebalance All (Chunked Async Engine)...',
-            badge: '3s Polling + Auto-Resume',
-            subtitle: 'Preparing chunked schedule execution...'
+            title: 'Starting Rebalance All (One-by-One Engine)...',
+            badge: 'Safe Async Sequential Runner',
+            subtitle: 'Preparing sequential schedule execution...'
         });
 
+        let initExecuted = false;
+        let rebalancesExecuted = 0;
         let strat = currentStrategy;
-        const initialRuns = Array.isArray(strat.runs) ? strat.runs : [];
-        const initialHadInit = initialRuns.some((r, idx) => r && (r.run_type === 'INIT' || idx === 0));
-        const initialTotalCount = initialRuns.length;
-        const initialRebalCount = initialRuns.filter(r => r && r.run_type === 'REBALANCE').length;
 
         try {
-            const CHUNK_SIZE = 8;
-            const maxChunks = 160;
-            let chunkIndex = 0;
-            let transientFailures = 0;
-            const maxTransientRecoveries = 5;
-
-            while (chunkIndex < maxChunks) {
-                chunkIndex++;
-                const currentRunsLen = Array.isArray(strat.runs) ? strat.runs.length : 0;
-                const badgeLabel = `Batch #${chunkIndex} · 3s Poll`;
+            // STEP 1: Execute Init asynchronously if DRAFT (prevents 30s reverse proxy 502 timeouts)
+            if (strat.status === 'DRAFT' || !strat.runs || strat.runs.length === 0) {
+                const startStr = (strat.start_date || '').substring(0, 10);
+                if (startStr > effectiveCutoff) {
+                    throw new Error(`Start date (${formatDateDisplay(startStr)}) is after cutoff date (${formatDateDisplay(effectiveCutoff)}). Cannot run Init.`);
+                }
 
                 setSmallcaseModalLoader('runAllRebalanceModal', true, {
-                    title: chunkIndex === 1 ? 'Executing Rebalance All...' : `Continuing Rebalance All (Batch #${chunkIndex})...`,
-                    badge: badgeLabel,
-                    subtitle: `Processing up to ${CHUNK_SIZE} schedules${stepupVal > 0 ? ' with step-up ₹' + formatCurrency(stepupVal) : ''}...`
+                    title: 'Executing Initial Portfolio Allocation (Init)...',
+                    badge: 'Step 1 of Rebalance All',
+                    subtitle: `Allocating initial capital ₹${formatCurrency(strat.amount_to_invest)} on ${formatDateDisplay(strat.start_date)}...`
                 });
 
-                let chunkResult = null;
-                try {
-                    const startRes = await fetchJsonWithRetry(
-                        `/api/momentum-smallcases/strategies/${encodeURIComponent(strat.id)}/run-all`,
-                        {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                stepup_amount: stepupVal,
-                                up_to_date: cutoffVal || null,
-                                trim_existing: trimVal,
-                                chunk_size: CHUNK_SIZE
-                            })
-                        },
-                        {
-                            maxRetries: 4,
-                            onRetry: (err, attempt, delayMs) => {
-                                setSmallcaseModalLoader('runAllRebalanceModal', true, {
-                                    title: `Resuming Batch #${chunkIndex}...`,
-                                    badge: `Retry ${attempt}/4`,
-                                    subtitle: `${err.status === 429 ? 'Rate limited (429)' : 'Temporary gateway error (' + (err.status || 'network') + ')'} — retrying in ${(delayMs / 1000).toFixed(0)}s...`
-                                });
-                            }
-                        }
-                    );
+                const initData = await safeFetchJson(`/api/momentum-smallcases/strategies/${encodeURIComponent(strat.id)}/run-init`, {
+                    method: 'POST'
+                });
 
-                    if (!startRes || !startRes.success) {
-                        throw new Error((startRes && startRes.error) || `Failed during Rebalance All batch #${chunkIndex}`);
+                if (!initData || !initData.success) {
+                    throw new Error((initData && initData.error) || 'Failed to execute Init');
+                }
+
+                let initResult = initData;
+                if (initData.async && initData.job_id) {
+                    initResult = await pollJobUntilComplete(initData.job_id, 'Executing Initial Allocation (Init)...', strat.id, 1);
+                }
+
+                const updatedInitStrat = await extractOrReloadStrategy(initResult, strat.id);
+                if (!updatedInitStrat) {
+                    throw new Error('Init completed but could not load updated strategy state.');
+                }
+                strat = updatedInitStrat;
+                currentStrategy = strat;
+                initExecuted = true;
+            }
+
+            // STEP 2: Sequentially execute pending monthly rebalance schedules via async jobs
+            const maxSchedules = 150; // Guard against infinite loop (12+ years)
+            let lastProcessedDate = null;
+
+            while (rebalancesExecuted < maxSchedules) {
+                const schedRebalStr = (strat.next_rebalance_date || '').substring(0, 10);
+                if (!schedRebalStr) break;
+                if (schedRebalStr > effectiveCutoff) {
+                    // Reached beyond cutoff date or today
+                    break;
+                }
+                if (lastProcessedDate && schedRebalStr <= lastProcessedDate) {
+                    console.warn(`Rebalance date did not advance: ${schedRebalStr} <= ${lastProcessedDate}`);
+                    break;
+                }
+
+                const schedNum = rebalancesExecuted + 1;
+                const prevRunsLen = Array.isArray(strat.runs) ? strat.runs.length : 0;
+                setSmallcaseModalLoader('runAllRebalanceModal', true, {
+                    title: `Executing Rebalance #${schedNum}...`,
+                    badge: `Schedule ${schedNum}`,
+                    subtitle: `Running rebalance for ${formatDateDisplay(schedRebalStr)}${stepupVal > 0 ? ' with step-up ₹' + formatCurrency(stepupVal) : ''}...`
+                });
+
+                let rebalResult;
+                try {
+                    const rebalData = await safeFetchJson(`/api/momentum-smallcases/strategies/${encodeURIComponent(strat.id)}/run-rebalance`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            stepup_amount: stepupVal,
+                            trim_existing: trimVal
+                        })
+                    });
+
+                    if (!rebalData || !rebalData.success) {
+                        throw new Error((rebalData && rebalData.error) || `Failed during rebalance execution on ${formatDateDisplay(schedRebalStr)}`);
                     }
 
-                    chunkResult = startRes;
-                    if (startRes.async && startRes.job_id) {
-                        chunkResult = await pollJobUntilComplete(
-                            startRes.job_id,
-                            `Batch #${chunkIndex}...`,
+                    rebalResult = rebalData;
+                    if (rebalData.async && rebalData.job_id) {
+                        rebalResult = await pollJobUntilComplete(
+                            rebalData.job_id,
+                            `Executing Rebalance #${schedNum}...`,
                             strat.id,
-                            currentRunsLen + 1,
-                            {
-                                pollIntervalMs: 3000,
-                                onProgress: (job) => {
-                                    setSmallcaseModalLoader('runAllRebalanceModal', true, {
-                                        title: `Executing Rebalance All (Batch #${chunkIndex})...`,
-                                        badge: badgeLabel,
-                                        subtitle: job.progress || 'Evaluating momentum rankings and saving schedules...'
-                                    });
-                                }
-                            }
+                            prevRunsLen + 1
                         );
                     }
-                    transientFailures = 0;
-                } catch (chunkErr) {
-                    const msgLow = String((chunkErr && chunkErr.message) || '').toLowerCase();
-                    if (msgLow.includes('future date') && (chunkIndex > 1 || (Array.isArray(strat.runs) && strat.runs.length > initialTotalCount))) {
+                } catch (stepErr) {
+                    const msgLow = String(stepErr && stepErr.message || '').toLowerCase();
+                    // Holiday-adjusted next rebalance fell after today cleanly ends remaining schedules
+                    if ((initExecuted || rebalancesExecuted > 0) && msgLow.includes('future date')) {
                         break;
                     }
-                    if (isTransientHttpError(chunkErr) && transientFailures < maxTransientRecoveries) {
-                        transientFailures++;
-                        const waitMs = computeRetryDelayMs(chunkErr, transientFailures, 3000);
-                        setSmallcaseModalLoader('runAllRebalanceModal', true, {
-                            title: `Auto-Resuming After ${chunkErr.status || 'Network'} Error...`,
-                            badge: `Recovery ${transientFailures}/${maxTransientRecoveries}`,
-                            subtitle: `Checking saved progress and resuming in ${(waitMs / 1000).toFixed(0)}s...`
-                        });
-                        await new Promise(r => setTimeout(r, waitMs));
-                        const reloaded = await extractOrReloadStrategy(null, strat.id);
-                        if (reloaded) {
-                            strat = reloaded;
-                            currentStrategy = reloaded;
-                            const nextStr = (strat.next_rebalance_date || '').substring(0, 10);
-                            if (nextStr && nextStr > effectiveCutoff) {
-                                break;
-                            }
-                        }
-                        continue;
-                    }
-                    throw chunkErr;
+                    throw stepErr;
                 }
 
-                // Update lightweight loop state from chunk metadata; defer full strategy reload until the very end
-                const nextDateFromChunk = (chunkResult && chunkResult.next_rebalance_date) ? String(chunkResult.next_rebalance_date).substring(0, 10) : '';
-                if (nextDateFromChunk) {
-                    strat.next_rebalance_date = nextDateFromChunk;
+                const updatedRebalStrat = await extractOrReloadStrategy(rebalResult, strat.id);
+                if (!updatedRebalStrat) {
+                    throw new Error(`Rebalance #${schedNum} completed but could not load updated strategy state.`);
                 }
-                if (chunkResult && typeof chunkResult.runs_count === 'number') {
-                    strat._lastKnownRunsCount = chunkResult.runs_count;
-                }
-
-                if (!chunkResult || !chunkResult.has_more) {
-                    break;
-                }
-                if (nextDateFromChunk && nextDateFromChunk > effectiveCutoff) {
-                    break;
-                }
-            }
-
-            // Single final reload of full strategy state once all chunks complete
-            const finalStrat = await fetchJsonWithRetry(
-                `/api/momentum-smallcases/strategies/${encodeURIComponent(strat.id)}`,
-                {},
-                { maxRetries: 3 }
-            );
-            if (finalStrat && finalStrat.strategy) {
-                strat = finalStrat.strategy;
+                strat = updatedRebalStrat;
                 currentStrategy = strat;
+                lastProcessedDate = schedRebalStr;
+                rebalancesExecuted++;
             }
 
-            const finalRuns = Array.isArray(strat.runs) ? strat.runs : [];
-            const finalHadInit = finalRuns.some((r, idx) => r && (r.run_type === 'INIT' || idx === 0));
-            const finalRebalCount = finalRuns.filter(r => r && r.run_type === 'REBALANCE').length;
-            const netInitExecuted = !initialHadInit && finalHadInit;
-            const netRebalancesExecuted = Math.max(0, finalRebalCount - initialRebalCount);
-            const totalRuns = (netInitExecuted ? 1 : 0) + netRebalancesExecuted;
-
+            const totalRuns = (initExecuted ? 1 : 0) + rebalancesExecuted;
             closeRunAllModal();
 
             if (totalRuns === 0) {
                 alertToast(`No rebalance schedules due before ${formatDateDisplay(effectiveCutoff)}. Smallcase is already up to date.`, 'info');
             } else {
                 const parts = [];
-                if (netInitExecuted) parts.push('Init');
-                if (netRebalancesExecuted > 0) parts.push(`${netRebalancesExecuted} rebalance(s)`);
+                if (initExecuted) parts.push('Init');
+                if (rebalancesExecuted > 0) parts.push(`${rebalancesExecuted} rebalance(s)`);
                 alertToast(`Rebalance All completed successfully! Executed ${parts.join(' + ')}.`, 'success');
             }
 
@@ -2463,23 +2331,10 @@
             await openStrategyDetailView(currentStrategy.id);
             await loadStrategiesList();
         } catch (err) {
-            console.error('Error running all rebalances:', err);
-            let latestRuns = Array.isArray(currentStrategy && currentStrategy.runs) ? currentStrategy.runs : [];
-            if (currentStrategy && currentStrategy.id) {
-                try {
-                    const refreshed = await safeFetchJson(`/api/momentum-smallcases/strategies/${encodeURIComponent(currentStrategy.id)}`);
-                    if (refreshed && refreshed.strategy) {
-                        currentStrategy = refreshed.strategy;
-                        latestRuns = Array.isArray(currentStrategy.runs) ? currentStrategy.runs : [];
-                    }
-                } catch (_) {}
-            }
-            const curHadInit = latestRuns.some((r, idx) => r && (r.run_type === 'INIT' || idx === 0));
-            const curRebalCount = latestRuns.filter(r => r && r.run_type === 'REBALANCE').length;
+            console.error('Error running all rebalances one-by-one:', err);
             const partialDone = [];
-            if (!initialHadInit && curHadInit) partialDone.push('Init');
-            const netDoneRebals = Math.max(0, curRebalCount - initialRebalCount);
-            if (netDoneRebals > 0) partialDone.push(`${netDoneRebals} rebalance(s)`);
+            if (initExecuted) partialDone.push('Init');
+            if (rebalancesExecuted > 0) partialDone.push(`${rebalancesExecuted} rebalance(s)`);
             const statusSummary = partialDone.length > 0 ? ` (Saved so far: ${partialDone.join(' + ')})` : '';
             alertToast(`Rebalance All stopped: ${err.message}${statusSummary}`, 'error');
 
