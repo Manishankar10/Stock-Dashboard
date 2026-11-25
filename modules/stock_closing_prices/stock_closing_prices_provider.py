@@ -280,13 +280,42 @@ class StockClosingPricesProvider:
             cand -= datetime.timedelta(days=1)
         return today.strftime("%Y-%m-%d")
 
+    def _inspect_db_stock_states(self) -> Dict[str, Dict[str, Any]]:
+        """
+        Inspects each stock's actual latest price/date and duplicate status in MongoDB.
+        Falls back to summary_only load if direct MongoDB aggregation is unavailable.
+        """
+        inspected = db_store.inspect_stock_closing_prices_latest_db()
+        if inspected is not None:
+            return inspected
+
+        summary = db_store.load_stock_closing_prices_db(summary_only=True) or {}
+        fallback: Dict[str, Dict[str, Any]] = {}
+        for sym, rec in summary.items():
+            clean_sym = str(rec.get("symbol") or sym or "").strip().upper()
+            if not clean_sym:
+                continue
+            fallback[clean_sym] = {
+                "symbol": clean_sym,
+                "company_name": str(rec.get("company_name") or clean_sym).strip(),
+                "start_date": str(rec.get("start_date") or "").strip()[:10],
+                "latest_date": str(rec.get("latest_date") or "").strip()[:10],
+                "latest_close": float(rec.get("latest_close") or 0.0),
+                "total_records": int(rec.get("total_records") or 0),
+                "unique_date_count": int(rec.get("total_records") or 0),
+                "last_synced_display": str(rec.get("last_synced_display") or "Never"),
+                "has_duplicates": False,
+                "needs_repair": False,
+            }
+        return fallback
+
     def get_sync_status(self) -> Dict[str, Any]:
         """Telemetry status for Admin Exchange Datasets & Feed Synchronization table."""
         market_closed, market_msg = self.is_market_closed()
         target_market_date = self.get_latest_market_trading_date()
         
-        # Check current count from DB
-        summary = db_store.load_stock_closing_prices_db(summary_only=True) or {}
+        # Inspect actual latest price/date per stock from DB
+        summary = self._inspect_db_stock_states()
         db_count = len(summary)
         
         # Calculate pending stocks count
@@ -306,10 +335,17 @@ class StockClosingPricesProvider:
             if best_synced_display and best_synced_display != "Never":
                 self._last_synced_display = best_synced_display
             
-            # Count stocks missing the target market trading date
+            # Count stocks missing latest completed trading date, empty prices, or needing duplicate repair
             check_date = target_market_date or latest_date
             if check_date:
-                pending_count = sum(1 for sym, rec in summary.items() if (rec.get("latest_date") or "") < check_date)
+                pending_count = sum(
+                    1 for sym, rec in summary.items()
+                    if (rec.get("latest_date") or "") < check_date
+                    or int(rec.get("total_records") or 0) == 0
+                    or bool(rec.get("needs_repair"))
+                )
+        if self._total_stocks > db_count:
+            pending_count += (self._total_stocks - db_count)
 
         # Detect earliest historical date in DB
         min_start_date = "9999-99-99"
@@ -392,7 +428,7 @@ class StockClosingPricesProvider:
             cursor = col.find({}, {"_id": 1, "symbol": 1, "prices": 1}, batch_size=25)
             for d in cursor:
                 sym = d.get("_id") or d.get("symbol")
-                prices = d.get("prices") or []
+                prices = db_store.normalize_and_deduplicate_prices(d.get("prices") or [])
                 monthly_prices = compute_stock_monthly_prices(prices)
                 ops.append(UpdateOne(
                     {"_id": sym},
@@ -487,6 +523,44 @@ class StockClosingPricesProvider:
             "market_status": "CLOSED" if market_closed else "OPEN (Forced)"
         }
 
+    def _build_stock_closing_record(
+        self,
+        symbol: str,
+        company_name: str,
+        merged_prices: List[Dict[str, Any]]
+    ) -> Optional[Dict[str, Any]]:
+        """Builds a normalized, duplicate-free stock closing price document with monthly metrics."""
+        if not merged_prices:
+            return None
+
+        start_date = merged_prices[0]["d"]
+        latest_date = merged_prices[-1]["d"]
+        latest_close = merged_prices[-1]["c"]
+        prev_close = merged_prices[-2]["c"] if len(merged_prices) > 1 else latest_close
+        change = round(latest_close - prev_close, 2)
+        change_pct = round((change / prev_close * 100.0) if prev_close else 0.0, 2)
+        now_display = format_ist_display()
+        now_iso = now_ist().isoformat()
+
+        monthly_prices = compute_stock_monthly_prices(merged_prices)
+
+        # NOTE: Strictly stock metadata only; NO index details saved!
+        return {
+            "symbol": symbol,
+            "company_name": company_name,
+            "start_date": start_date,
+            "latest_date": latest_date,
+            "latest_close": latest_close,
+            "prev_close": prev_close,
+            "change": change,
+            "change_pct": change_pct,
+            "total_records": len(merged_prices),
+            "prices": merged_prices,
+            "monthly_prices": monthly_prices,
+            "last_synced": now_iso,
+            "last_synced_display": now_display
+        }
+
     def _fetch_single_stock_history(
         self,
         symbol: str,
@@ -494,25 +568,54 @@ class StockClosingPricesProvider:
         existing_doc: Optional[Dict[str, Any]],
         full_resync: bool,
         target_market_date: str = "",
-        start_date: str = "2012-01-01"
+        start_date: str = "2012-01-01",
+        force: bool = False
     ) -> Optional[Dict[str, Any]]:
         """
         Fetches daily closing prices from Yahoo Finance for a single stock.
-        - Incremental sync: updates recent dates starting from the NEXT date after the last date
-          updated in DB for this stock up to the latest market trading date.
-        - Full resync: fetches complete historical daily prices from start_date (2012-01-01 / 2013-01-01) to Present.
-        Maintains chronological sorting with zero duplicate dates.
+        - Incremental sync: inspects the stock's actual latest price/date in DB, deduplicates any
+          pre-existing anomalies, and fetches only remaining dates strictly after that date.
+        - Full resync: fetches complete historical daily prices from start_date to Present.
+        Maintains chronological sorting with strictly zero duplicate dates.
         """
         sym_clean = symbol.strip().upper()
-        existing_prices = []
-        latest_existing_date = ""
-        if existing_doc and not full_resync:
-            existing_prices = existing_doc.get("prices", [])
-            latest_existing_date = existing_doc.get("latest_date", "")
-
         tz_ist = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
+        now_dt = now_ist()
         now_ts = int(time.time())
+        today_ist_str = now_dt.strftime("%Y-%m-%d")
         effective_start = start_date or DEFAULT_START_DATE
+        max_allowed_date = today_ist_str if force else (target_market_date or today_ist_str)
+
+        clean_existing: List[Dict[str, Any]] = []
+        actual_latest_date = ""
+        existing_needs_repair = False
+
+        if existing_doc and not full_resync:
+            raw_existing = existing_doc.get("prices") or []
+            clean_existing = db_store.normalize_and_deduplicate_prices(raw_existing)
+            if len(clean_existing) != len(raw_existing):
+                existing_needs_repair = True
+            elif any(
+                (str(p.get("d", "")).strip()[:10] != cp["d"] or round(float(p["c"]), 2) != cp["c"])
+                for p, cp in zip(raw_existing, clean_existing)
+            ):
+                existing_needs_repair = True
+
+            if clean_existing:
+                actual_latest_date = clean_existing[-1]["d"]
+                actual_latest_close = clean_existing[-1]["c"]
+                doc_latest_date = str(existing_doc.get("latest_date") or "").strip()[:10]
+                doc_total = int(existing_doc.get("total_records") or 0)
+                try:
+                    doc_latest_close = round(float(existing_doc.get("latest_close") or 0.0), 2)
+                except (TypeError, ValueError):
+                    doc_latest_close = 0.0
+                if (
+                    doc_latest_date != actual_latest_date
+                    or doc_total != len(clean_existing)
+                    or doc_latest_close != actual_latest_close
+                ):
+                    existing_needs_repair = True
 
         try:
             s_dt = datetime.datetime.strptime(effective_start, "%Y-%m-%d").date()
@@ -520,20 +623,18 @@ class StockClosingPricesProvider:
         except Exception:
             start_ts = START_TIMESTAMP_2012
 
-        # Determine query parameters:
-        # If stock already exists in DB and has historical prices, fetch only recent dates
-        # from the NEXT date after the last date updated (latest_existing_date) up to now.
-        if existing_prices and latest_existing_date and not full_resync:
+        # Determine query window strictly after this stock's actual latest price/date
+        if clean_existing and actual_latest_date and not full_resync:
+            if max_allowed_date and actual_latest_date >= max_allowed_date:
+                return self._build_stock_closing_record(sym_clean, company_name, clean_existing) if existing_needs_repair else None
             try:
-                last_dt = datetime.datetime.strptime(latest_existing_date, "%Y-%m-%d").date()
-                # Start fetching from the next date after the last date updated
+                last_dt = datetime.datetime.strptime(actual_latest_date, "%Y-%m-%d").date()
                 next_dt = last_dt + datetime.timedelta(days=1)
                 dt_next_ist = datetime.datetime(next_dt.year, next_dt.month, next_dt.day, 0, 0, 0, tzinfo=tz_ist)
                 period1 = int(dt_next_ist.timestamp())
 
-                # If the next date is in the future relative to current time, stock is already up to date
                 if period1 >= now_ts:
-                    return None
+                    return self._build_stock_closing_record(sym_clean, company_name, clean_existing) if existing_needs_repair else None
 
                 query_params = f"interval=1d&period1={period1}&period2={now_ts}&includePrePost=false"
             except Exception as e:
@@ -568,7 +669,7 @@ class StockClosingPricesProvider:
                 break
 
         if not raw_res:
-            return None
+            return self._build_stock_closing_record(sym_clean, company_name, clean_existing) if (existing_needs_repair and clean_existing and not full_resync) else None
 
         timestamps = raw_res.get("timestamp", []) or []
         indicators = raw_res.get("indicators", {})
@@ -587,65 +688,30 @@ class StockClosingPricesProvider:
                     if c_float > 0:
                         dt_ist = datetime.datetime.fromtimestamp(ts, tz=tz_ist)
                         d_str = dt_ist.strftime("%Y-%m-%d")
-                        if d_str >= effective_start:
-                            fetched_bars.append({"d": d_str, "c": round(c_float, 2)})
+                        if max_allowed_date and d_str > max_allowed_date:
+                            continue
+                        if not full_resync and actual_latest_date:
+                            # Strictly sync remaining dates only; never duplicate or overwrite already stored dates
+                            if d_str <= actual_latest_date:
+                                continue
+                        elif d_str < effective_start:
+                            continue
+                        fetched_bars.append({"d": d_str, "c": round(c_float, 2)})
                 except (ValueError, TypeError):
                     continue
 
-        if not fetched_bars:
-            return None
+        clean_fetched = db_store.normalize_and_deduplicate_prices(fetched_bars)
+        if not clean_fetched:
+            return self._build_stock_closing_record(sym_clean, company_name, clean_existing) if (existing_needs_repair and clean_existing and not full_resync) else None
 
-        # Merge fetched bars with existing prices (idempotent, deduplicated by date)
-        # Strictly exclude any historical data prior to effective_start
-        price_dict = {}
-        if not full_resync:
-            for p in existing_prices:
-                d = p.get("d", "")
-                c = p.get("c")
-                if d >= effective_start and c is not None and float(c) > 0:
-                    price_dict[d] = round(float(c), 2)
+        if full_resync or not clean_existing:
+            merged_prices = clean_fetched
+        else:
+            merged_prices = db_store.normalize_and_deduplicate_prices(clean_existing + clean_fetched)
+            if not existing_needs_repair and len(merged_prices) == len(clean_existing):
+                return None
 
-        for b in fetched_bars:
-            d = b.get("d", "")
-            c = b.get("c")
-            if d >= effective_start and c is not None and float(c) > 0:
-                price_dict[d] = round(float(c), 2)
-
-        # Sort chronologically
-        merged_dates = sorted(price_dict.keys())
-        merged_prices = [{"d": d, "c": price_dict[d]} for d in merged_dates]
-
-        if not merged_prices:
-            return None
-
-        start_date = merged_prices[0]["d"]
-        latest_date = merged_prices[-1]["d"]
-        latest_close = merged_prices[-1]["c"]
-        prev_close = merged_prices[-2]["c"] if len(merged_prices) > 1 else latest_close
-        change = round(latest_close - prev_close, 2)
-        change_pct = round((change / prev_close * 100.0) if prev_close else 0.0, 2)
-        now_display = format_ist_display()
-        now_iso = now_ist().isoformat()
-
-        # Compute monthly average prices and returns
-        monthly_prices = compute_stock_monthly_prices(merged_prices)
-
-        # NOTE: Strictly stock metadata only; NO index details saved!
-        return {
-            "symbol": sym_clean,
-            "company_name": company_name,
-            "start_date": start_date,
-            "latest_date": latest_date,
-            "latest_close": latest_close,
-            "prev_close": prev_close,
-            "change": change,
-            "change_pct": change_pct,
-            "total_records": len(merged_prices),
-            "prices": merged_prices,
-            "monthly_prices": monthly_prices,
-            "last_synced": now_iso,
-            "last_synced_display": now_display
-        }
+        return self._build_stock_closing_record(sym_clean, company_name, merged_prices)
 
     def _run_sync(
         self,
@@ -667,16 +733,20 @@ class StockClosingPricesProvider:
             total_target = len(stocks_map)
             self._total_stocks = total_target
 
-            # Load existing records (summary only for quick comparison)
-            existing_summary = db_store.load_stock_closing_prices_db(summary_only=True) or {}
+            # Inspect each stock's actual latest price/date and duplicate status in DB
+            existing_state = self._inspect_db_stock_states()
             target_market_date = self.get_latest_market_trading_date()
+            check_date = now_ist().strftime("%Y-%m-%d") if force else target_market_date
 
-            # Prepare list of stocks to fetch
-            if not full_resync and not force:
-                # Sync strictly ONLY pending stocks that do not have the latest market trading date
+            # Prepare list of stocks to fetch/repair
+            if not full_resync:
+                # Sync stocks missing from DB, missing latest closing dates, empty prices, or needing duplicate cleanup
                 stock_items = [
                     (sym, cname) for sym, cname in stocks_map.items()
-                    if sym not in existing_summary or (existing_summary[sym].get("latest_date") or "") < target_market_date
+                    if sym not in existing_state
+                    or (existing_state[sym].get("latest_date") or "") < check_date
+                    or int(existing_state[sym].get("total_records") or 0) == 0
+                    or bool(existing_state[sym].get("needs_repair"))
                 ]
                 if not stock_items:
                     now_final = format_ist_display()
@@ -685,11 +755,11 @@ class StockClosingPricesProvider:
                         self._percent = 100
                         self._last_synced_display = now_final
                         self._latest_trading_date = target_market_date
-                        self._progress = f"All {len(existing_summary)} stocks are already up-to-date as of {target_market_date}. 0 pending dates to sync."
+                        self._progress = f"All {len(existing_state)} stocks are already up-to-date as of {target_market_date}. 0 pending dates to sync."
                     self._persist_telemetry()
                     logger.info(f"Sync check complete: 0 pending stocks. All stocks up-to-date as of {target_market_date}.")
                     return
-                logger.info(f"Syncing pending dates for {len(stock_items)} stocks (Target date: {target_market_date})...")
+                logger.info(f"Syncing remaining dates / cleanup for {len(stock_items)} stocks (Target date: {check_date})...")
             else:
                 stock_items = list(stocks_map.items())
 
@@ -699,7 +769,7 @@ class StockClosingPricesProvider:
                 if full_resync:
                     self._progress = f"Full resynchronization from {start_date} for {total_target} stocks..."
                 else:
-                    self._progress = f"Synchronizing pending dates for {total_target} stocks (Target: {target_market_date})..."
+                    self._progress = f"Checking latest prices & syncing remaining dates for {total_target} stocks (Target: {check_date})..."
                 self._percent = 5
             self._persist_telemetry()
 
@@ -717,9 +787,9 @@ class StockClosingPricesProvider:
                 with ThreadPoolExecutor(max_workers=10) as executor:
                     futures = {}
                     for sym, cname in chunk:
-                        # If existing, fetch full doc only if we need to append
+                        # If existing, fetch full doc only if we need to append or repair duplicates
                         existing_doc = None
-                        if sym in existing_summary and not full_resync:
+                        if sym in existing_state and not full_resync:
                             existing_doc = db_store.load_stock_closing_prices_db(sym)
 
                         future = executor.submit(
@@ -729,7 +799,8 @@ class StockClosingPricesProvider:
                             existing_doc,
                             full_resync,
                             target_market_date,
-                            start_date
+                            start_date,
+                            force
                         )
                         futures[future] = sym
 

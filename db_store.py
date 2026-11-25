@@ -1,6 +1,127 @@
 import os
 import json
+import math
+from datetime import date as _iso_date
 from modules.common.ist_datetime import format_ist_display, now_ist
+
+
+def normalize_and_deduplicate_prices(prices, min_date: str = "", max_date: str = ""):
+    """
+    Normalizes, validates, deduplicates by calendar date ('YYYY-MM-DD'),
+    and chronologically sorts a list of {'d': date, 'c': close} price bars.
+    When duplicate dates exist, the latest valid occurrence is retained so no duplicates remain.
+    """
+    dedup = {}
+    for entry in (prices or []):
+        if not isinstance(entry, dict):
+            continue
+        raw_d = entry.get("d")
+        raw_c = entry.get("c")
+        if raw_d is None or raw_c is None:
+            continue
+        d_str = str(raw_d).strip()[:10]
+        if len(d_str) != 10 or d_str[4] != "-" or d_str[7] != "-":
+            continue
+        try:
+            _iso_date.fromisoformat(d_str)
+            c_val = float(raw_c)
+        except (ValueError, TypeError):
+            continue
+        if not math.isfinite(c_val) or c_val <= 0:
+            continue
+        if min_date and d_str < min_date:
+            continue
+        if max_date and d_str > max_date:
+            continue
+        dedup[d_str] = round(c_val, 2)
+
+    return [{"d": d, "c": dedup[d]} for d in sorted(dedup.keys())]
+
+
+def inspect_stock_closing_prices_latest_db():
+    """
+    Inspects each stock in MongoDB stock_closing_prices via server-side aggregation
+    to verify actual latest price/date from `prices` and detect duplicates or metadata drift.
+    Returns a dict keyed by symbol, or None if MongoDB is unavailable / query fails.
+    """
+    if db is None:
+        return None
+    try:
+        col = db["stock_closing_prices"]
+        pipeline = [
+            {
+                "$project": {
+                    "_id": 1,
+                    "symbol": 1,
+                    "company_name": 1,
+                    "start_date": 1,
+                    "latest_date": 1,
+                    "latest_close": 1,
+                    "total_records": 1,
+                    "last_synced_display": 1,
+                    "prices_count": {
+                        "$cond": [{"$isArray": "$prices"}, {"$size": "$prices"}, 0]
+                    },
+                    "actual_max_date": {
+                        "$cond": [{"$isArray": "$prices"}, {"$max": "$prices.d"}, None]
+                    },
+                    "actual_last_item": {
+                        "$cond": [{"$isArray": "$prices"}, {"$arrayElemAt": ["$prices", -1]}, None]
+                    },
+                    "unique_date_count": {
+                        "$size": {
+                            "$setUnion": [
+                                {"$cond": [{"$isArray": "$prices"}, "$prices.d", []]},
+                                []
+                            ]
+                        }
+                    }
+                }
+            }
+        ]
+        result = {}
+        for doc in col.aggregate(pipeline):
+            sym = str(doc.get("symbol") or doc.get("_id") or "").strip().upper()
+            if not sym:
+                continue
+            prices_count = int(doc.get("prices_count") or 0)
+            unique_date_count = int(doc.get("unique_date_count") or 0)
+            doc_total_records = int(doc.get("total_records") or 0)
+            doc_latest_date = str(doc.get("latest_date") or "").strip()[:10]
+            actual_max_raw = doc.get("actual_max_date")
+            actual_max_date = str(actual_max_raw).strip()[:10] if actual_max_raw else ""
+            last_item = doc.get("actual_last_item")
+            last_d = str(last_item.get("d") or "").strip()[:10] if isinstance(last_item, dict) else ""
+            last_c = last_item.get("c") if isinstance(last_item, dict) else None
+            effective_latest_date = actual_max_date or doc_latest_date
+            try:
+                effective_latest_close = round(float(last_c if last_c is not None else (doc.get("latest_close") or 0.0)), 2)
+            except (TypeError, ValueError):
+                effective_latest_close = 0.0
+
+            has_duplicates = prices_count > 0 and unique_date_count < prices_count
+            meta_mismatch = prices_count > 0 and (
+                not actual_max_date
+                or last_d != actual_max_date
+                or actual_max_date != doc_latest_date
+                or prices_count != doc_total_records
+            )
+            result[sym] = {
+                "symbol": sym,
+                "company_name": str(doc.get("company_name") or sym).strip(),
+                "start_date": str(doc.get("start_date") or "").strip()[:10],
+                "latest_date": effective_latest_date,
+                "latest_close": effective_latest_close,
+                "total_records": prices_count,
+                "unique_date_count": unique_date_count,
+                "last_synced_display": str(doc.get("last_synced_display") or "Never"),
+                "has_duplicates": has_duplicates,
+                "needs_repair": bool(has_duplicates or meta_mismatch),
+            }
+        return result
+    except Exception as e:
+        print(f"MongoDB inspect_stock_closing_prices_latest_db error: {e}")
+        return None
 
 try:
     from modules.app_config import load_local_environment
@@ -2035,13 +2156,14 @@ def save_stock_closing_prices_db(records):
         if not sym:
             continue
         cname = str(r.get("company_name", sym)).strip()
-        prices = r.get("prices", [])
+        # Enforce strict per-date deduplication and chronological order before persisting to MongoDB
+        prices = normalize_and_deduplicate_prices(r.get("prices", []))
         monthly_prices = r.get("monthly_prices", [])
         tot = len(prices)
-        s_date = r.get("start_date") or (prices[0]["d"] if prices else "")
-        l_date = r.get("latest_date") or (prices[-1]["d"] if prices else "")
-        l_close = float(r.get("latest_close") if r.get("latest_close") is not None else (prices[-1]["c"] if prices else 0.0))
-        p_close = float(r.get("prev_close") if r.get("prev_close") is not None else (prices[-2]["c"] if len(prices) > 1 else l_close))
+        s_date = prices[0]["d"] if prices else str(r.get("start_date") or "")
+        l_date = prices[-1]["d"] if prices else str(r.get("latest_date") or "")
+        l_close = float(prices[-1]["c"]) if prices else float(r.get("latest_close") or 0.0)
+        p_close = float(prices[-2]["c"]) if len(prices) > 1 else l_close
         chg = round(l_close - p_close, 2)
         chg_pct = round((chg / p_close * 100.0) if p_close else 0.0, 2)
         synced_iso = r.get("last_synced") or now_iso
