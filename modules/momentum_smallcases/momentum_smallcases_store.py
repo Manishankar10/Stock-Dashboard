@@ -1299,15 +1299,20 @@ def run_strategy_withdrawal(strategy_id, withdrawals, comments="", username=None
     }
 
 
-def run_strategy_all_rebalances(strategy_id, stepup_per_rebalance=0.0, up_to_date=None, username=None, trim_existing=None, enforce_time_limit=True):
+def run_strategy_all_rebalances(strategy_id, stepup_per_rebalance=0.0, up_to_date=None, username=None, trim_existing=None, enforce_time_limit=True, max_runs_per_chunk=None, progress_callback=None):
     """
     Executes Init (if strategy is in DRAFT status) and then sequentially executes
-    all scheduled monthly rebalances up to up_to_date (defaults to today).
-    Each rebalance run receives the specified stepup_per_rebalance capital amount.
-    Pre-warms only the needed historical window upfront for fast, timeout-safe execution.
+    scheduled monthly rebalances up to up_to_date (defaults to today).
+    Supports safe chunking (via max_runs_per_chunk / max_batch_seconds) and returns
+    `has_more` so long multi-year runs never exhaust memory or proxy limits.
     """
     import time
-    from modules.momentum_smallcases.momentum_smallcases_calculator import save_price_cache
+    from modules.momentum_smallcases.momentum_smallcases_calculator import (
+        clear_db_prices_cache,
+        get_next_trading_day,
+        get_official_trading_holidays,
+        save_price_cache,
+    )
 
     data = load_user_momentum_smallcases(username)
     strategies = data.get("strategies", [])
@@ -1345,111 +1350,154 @@ def run_strategy_all_rebalances(strategy_id, stepup_per_rebalance=0.0, up_to_dat
             f"Cutoff date cannot be in the future (today is {today_d.strftime('%d/%m/%Y')})."
         )
 
-    # 0. Pre-warm daily quotes for [earliest needed date - 450d .. cutoff_d]
-    constituents = get_strategy_index_constituents(
-        target["index_id"],
-        target.get("index_type", "manual"),
-        username=username
-    )
-    symbols_to_warm = _extract_strategy_symbols(target, constituents)
-    if symbols_to_warm:
-        base_d = cutoff_d
+    chunk_limit = None
+    if max_runs_per_chunk is not None:
         try:
-            if target.get("status") == "DRAFT" or not target.get("runs"):
-                base_d = datetime.strptime(target["start_date"][:10], "%Y-%m-%d").date()
-            elif target.get("next_rebalance_date"):
-                base_d = datetime.strptime(target["next_rebalance_date"][:10], "%Y-%m-%d").date()
-        except Exception:
-            base_d = cutoff_d
-        win_min = (base_d - timedelta(days=450)).isoformat()
-        win_max = cutoff_d.isoformat()
-        logger.info(f"Pre-warming {len(symbols_to_warm)} universe stock quotes ({win_min} to {win_max}) for batch rebalance...")
-        _prewarm_symbols_for_window(
-            symbols_to_warm,
-            min_date_str=win_min,
-            max_date_str=win_max,
-            cutoff_date=cutoff_d,
-            save_cache=True
-        )
+            parsed_chunk = int(max_runs_per_chunk)
+            if parsed_chunk > 0:
+                chunk_limit = parsed_chunk
+        except (TypeError, ValueError):
+            chunk_limit = None
 
+    holidays_set = get_official_trading_holidays()
     init_executed = False
     rebalances_executed = 0
-    batch_start_time = time.time()
-    max_batch_seconds = 22.0  # Guard synchronous HTTP calls below reverse proxy timeout
-
-    # 1. Execute Init if DRAFT or no runs
-    if target.get("status") == "DRAFT" or not target.get("runs"):
-        start_d = datetime.strptime(target["start_date"][:10], "%Y-%m-%d").date()
-        if start_d > cutoff_d:
-            raise ValueError(f"Smallcase start date ({start_d}) is after cutoff date ({cutoff_d}). Cannot run Init.")
-        target = run_strategy_init(strategy_id, username=username)
-        init_executed = True
-
-    # 2. Iteratively execute all due rebalances up to cutoff_d
-    max_rebal_runs = 150
-    last_processed_date = None
     reached_time_limit = False
+    reached_chunk_limit = False
+    has_more = False
 
-    while rebalances_executed < max_rebal_runs:
-        sched_rebal_str = target.get("next_rebalance_date")
-        if not sched_rebal_str:
-            break
-        rebal_d = datetime.strptime(sched_rebal_str[:10], "%Y-%m-%d").date()
-        if rebal_d > cutoff_d:
-            break
-        if last_processed_date and rebal_d <= last_processed_date:
-            logger.warning(f"Rebalance date did not advance: {rebal_d} <= {last_processed_date}")
-            break
+    def _report_progress(msg, runs_cnt=None):
+        if callable(progress_callback):
+            try:
+                progress_callback(msg, runs_cnt)
+            except Exception:
+                pass
 
-        if enforce_time_limit and rebalances_executed > 0 and (time.time() - batch_start_time) > max_batch_seconds:
-            logger.info(f"Batch time limit ({max_batch_seconds}s) reached after {rebalances_executed} rebalances; returning cleanly.")
-            reached_time_limit = True
-            break
-
-        try:
-            target = run_strategy_rebalance(
-                strategy_id,
-                stepup_amount=float(stepup_per_rebalance or 0.0),
-                username=username,
-                save_cache=False,
-                trim_existing=trim_existing_eff
-            )
-            rebalances_executed += 1
-            last_processed_date = rebal_d
-        except ValueError as ve:
-            # Stop cleanly if holiday adjustment pushed next rebalance beyond today
-            if (rebalances_executed > 0 or init_executed) and "future date" in str(ve).lower():
-                break
-            err_msg = f"Completed {'Init and ' if init_executed else ''}{rebalances_executed} rebalance(s), but stopped on {rebal_d}: {str(ve)}"
-            if rebalances_executed > 0 or init_executed:
-                raise RuntimeError(err_msg)
-            raise
-        except Exception as e:
-            logger.error(f"Error during batch rebalance on {rebal_d}: {e}", exc_info=True)
-            err_msg = f"Completed {'Init and ' if init_executed else ''}{rebalances_executed} rebalance(s), but stopped on {rebal_d}: {str(e)}"
-            if rebalances_executed > 0 or init_executed:
-                raise RuntimeError(err_msg)
-            else:
-                raise
-
-    # Save disk price cache once after batch completes
-    save_price_cache()
-
-    final_target = get_user_strategy(strategy_id, username=username) or target
-    total_runs = (1 if init_executed else 0) + rebalances_executed
-
-    if total_runs == 0:
-        next_dt_str = final_target.get('next_rebalance_date', '')
-        try:
-            next_d_obj = datetime.strptime(next_dt_str[:10], "%Y-%m-%d").date()
-            next_fmt = next_d_obj.strftime("%d/%m/%Y")
-        except Exception:
-            next_fmt = next_dt_str
-        raise ValueError(
-            f"Cannot execute rebalance for future date ({next_fmt}). "
-            f"Smallcase is already up to date up to today ({today_d.strftime('%d/%m/%Y')})."
+    try:
+        # 0. Pre-warm daily quotes for [earliest needed date - 450d .. cutoff_d]
+        _report_progress("Pre-warming universe closing prices from DB...", len(target.get("runs") or []))
+        constituents = get_strategy_index_constituents(
+            target["index_id"],
+            target.get("index_type", "manual"),
+            username=username
         )
-    else:
+        symbols_to_warm = _extract_strategy_symbols(target, constituents)
+        if symbols_to_warm:
+            base_d = cutoff_d
+            try:
+                if target.get("status") == "DRAFT" or not target.get("runs"):
+                    base_d = datetime.strptime(target["start_date"][:10], "%Y-%m-%d").date()
+                elif target.get("next_rebalance_date"):
+                    base_d = datetime.strptime(target["next_rebalance_date"][:10], "%Y-%m-%d").date()
+            except Exception:
+                base_d = cutoff_d
+            win_min = (base_d - timedelta(days=450)).isoformat()
+            win_max = cutoff_d.isoformat()
+            logger.info(f"Pre-warming {len(symbols_to_warm)} universe stock quotes ({win_min} to {win_max}) for batch rebalance...")
+            _prewarm_symbols_for_window(
+                symbols_to_warm,
+                min_date_str=win_min,
+                max_date_str=win_max,
+                cutoff_date=cutoff_d,
+                save_cache=True
+            )
+
+        batch_start_time = time.time()
+        max_batch_seconds = 22.0  # Guard batch chunk duration below reverse proxy timeout
+
+        # 1. Execute Init if DRAFT or no runs
+        if target.get("status") == "DRAFT" or not target.get("runs"):
+            start_d = datetime.strptime(target["start_date"][:10], "%Y-%m-%d").date()
+            if start_d > cutoff_d:
+                raise ValueError(f"Smallcase start date ({start_d}) is after cutoff date ({cutoff_d}). Cannot run Init.")
+            _report_progress(f"Executing Init ({start_d.strftime('%d %b %Y')})...", 0)
+            target = run_strategy_init(strategy_id, username=username)
+            init_executed = True
+            _report_progress(f"Init completed ({len(target.get('runs') or [])} run saved).", len(target.get("runs") or []))
+
+        # 2. Iteratively execute due rebalances up to cutoff_d (respecting chunk/time limits)
+        max_rebal_runs = 150
+        last_processed_date = None
+
+        while rebalances_executed < max_rebal_runs:
+            total_done_so_far = (1 if init_executed else 0) + rebalances_executed
+            if chunk_limit is not None and total_done_so_far >= chunk_limit:
+                reached_chunk_limit = True
+                break
+
+            sched_rebal_str = target.get("next_rebalance_date")
+            if not sched_rebal_str:
+                break
+            rebal_d = datetime.strptime(sched_rebal_str[:10], "%Y-%m-%d").date()
+            if rebal_d > cutoff_d:
+                break
+            if last_processed_date and rebal_d <= last_processed_date:
+                logger.warning(f"Rebalance date did not advance: {rebal_d} <= {last_processed_date}")
+                break
+
+            if enforce_time_limit and total_done_so_far > 0 and (time.time() - batch_start_time) > max_batch_seconds:
+                logger.info(f"Batch time limit ({max_batch_seconds}s) reached after {total_done_so_far} run(s); yielding chunk cleanly.")
+                reached_time_limit = True
+                break
+
+            try:
+                next_num = len([r for r in (target.get("runs") or []) if r.get("run_type") == "REBALANCE"]) + 1
+                _report_progress(f"Executing Rebalance #{next_num} ({rebal_d.strftime('%d %b %Y')})...", len(target.get("runs") or []))
+                target = run_strategy_rebalance(
+                    strategy_id,
+                    stepup_amount=float(stepup_per_rebalance or 0.0),
+                    username=username,
+                    save_cache=False,
+                    trim_existing=trim_existing_eff
+                )
+                rebalances_executed += 1
+                last_processed_date = rebal_d
+                _report_progress(f"Saved Rebalance #{next_num} ({rebal_d.strftime('%d %b %Y')})", len(target.get("runs") or []))
+            except ValueError as ve:
+                # Stop cleanly if holiday adjustment pushed next rebalance beyond today
+                if (rebalances_executed > 0 or init_executed) and "future date" in str(ve).lower():
+                    break
+                err_msg = f"Completed {'Init and ' if init_executed else ''}{rebalances_executed} rebalance(s), but stopped on {rebal_d}: {str(ve)}"
+                if rebalances_executed > 0 or init_executed:
+                    raise RuntimeError(err_msg)
+                raise
+            except Exception as e:
+                logger.error(f"Error during batch rebalance on {rebal_d}: {e}", exc_info=True)
+                err_msg = f"Completed {'Init and ' if init_executed else ''}{rebalances_executed} rebalance(s), but stopped on {rebal_d}: {str(e)}"
+                if rebalances_executed > 0 or init_executed:
+                    raise RuntimeError(err_msg)
+                else:
+                    raise
+
+        # Save disk price cache once after batch completes
+        save_price_cache()
+
+        final_target = get_user_strategy(strategy_id, username=username) or target
+        total_runs = (1 if init_executed else 0) + rebalances_executed
+        next_dt_str = final_target.get("next_rebalance_date") or ""
+
+        # Check if additional schedules remain due up to cutoff_d
+        if next_dt_str:
+            try:
+                next_d = datetime.strptime(next_dt_str[:10], "%Y-%m-%d").date()
+                if next_d <= cutoff_d:
+                    adj_next_d, _ = get_next_trading_day(next_d, holidays_set)
+                    if adj_next_d <= cutoff_d and adj_next_d <= today_d:
+                        has_more = True
+            except Exception:
+                pass
+
+        if total_runs == 0 and not has_more:
+            try:
+                next_d_obj = datetime.strptime(next_dt_str[:10], "%Y-%m-%d").date()
+                next_fmt = next_d_obj.strftime("%d/%m/%Y")
+            except Exception:
+                next_fmt = next_dt_str
+            raise ValueError(
+                f"Cannot execute rebalance for future date ({next_fmt}). "
+                f"Smallcase is already up to date up to today ({today_d.strftime('%d/%m/%Y')})."
+            )
+
         parts = []
         if init_executed:
             parts.append("Init")
@@ -1457,17 +1505,31 @@ def run_strategy_all_rebalances(strategy_id, stepup_per_rebalance=0.0, up_to_dat
             parts.append(f"{rebalances_executed} rebalance{'s' if rebalances_executed != 1 else ''}")
         stepup_val = float(stepup_per_rebalance or 0.0)
         stepup_txt = f" with ₹{stepup_val:,.2f} step-up per rebalance" if stepup_val > 0 else ""
-        msg = f"Successfully executed {' + '.join(parts)}{stepup_txt} up to {cutoff_d}. Next rebalance is on {final_target.get('next_rebalance_date')}."
-        if reached_time_limit:
-            msg += " (Reached batch safe time limit; click Run All again to continue remaining runs)."
+        msg = f"Successfully executed {' + '.join(parts)}{stepup_txt} up to {cutoff_d}. Next rebalance is on {next_dt_str}."
+        if has_more and (reached_chunk_limit or reached_time_limit):
+            msg += " (Chunk completed; continuing next schedules)."
 
-    return {
-        "strategy": final_target,
-        "init_executed": init_executed,
-        "rebalances_executed": rebalances_executed,
-        "total_runs_executed": total_runs,
-        "message": msg
-    }
+        return {
+            "strategy": final_target,
+            "init_executed": init_executed,
+            "rebalances_executed": rebalances_executed,
+            "total_runs_executed": total_runs,
+            "runs_count": len(final_target.get("runs") or []),
+            "has_more": has_more,
+            "next_rebalance_date": next_dt_str,
+            "message": msg
+        }
+    finally:
+        # Free server-side DB price cache once full Run All finishes (no remaining chunks)
+        # and no other background execution job is currently running in this worker.
+        if not has_more:
+            try:
+                with _JOBS_LOCK:
+                    other_running = sum(1 for j in _EXECUTION_JOBS.values() if j.get("status") == "RUNNING")
+                if other_running <= 1:
+                    clear_db_prices_cache()
+            except Exception:
+                pass
 
 
 def delete_user_strategy(strategy_id, username=None):
@@ -1824,6 +1886,12 @@ def _save_jobs_to_disk_locked():
                 "started_at": v.get("started_at"),
                 "completed_at": v.get("completed_at"),
                 "runs_count": v.get("runs_count"),
+                "init_executed": v.get("init_executed"),
+                "rebalances_executed": v.get("rebalances_executed"),
+                "total_runs_executed": v.get("total_runs_executed"),
+                "has_more": v.get("has_more"),
+                "next_rebalance_date": v.get("next_rebalance_date"),
+                "message": v.get("message"),
                 "error": v.get("error"),
             }
         tmp = f"{_JOBS_FILE}.tmp.{os.getpid()}"
@@ -1867,10 +1935,24 @@ def start_async_execution_job(job_type, strategy_id, username=None, **kwargs):
             "started_at": datetime.now().isoformat(),
             "completed_at": None,
             "runs_count": None,
+            "init_executed": False,
+            "rebalances_executed": 0,
+            "total_runs_executed": 0,
+            "has_more": False,
+            "next_rebalance_date": None,
+            "message": None,
             "result": None,
             "error": None
         }
         _save_jobs_to_disk_locked()
+
+    def _update_progress(msg, runs_cnt=None):
+        with _JOBS_LOCK:
+            if job_id in _EXECUTION_JOBS:
+                _EXECUTION_JOBS[job_id]["progress"] = msg
+                if runs_cnt is not None:
+                    _EXECUTION_JOBS[job_id]["runs_count"] = runs_cnt
+                _save_jobs_to_disk_locked()
 
     def _worker():
         try:
@@ -1885,26 +1967,38 @@ def start_async_execution_job(job_type, strategy_id, username=None, **kwargs):
                 stepup = kwargs.get("stepup_per_rebalance", 0.0)
                 up_to = kwargs.get("up_to_date")
                 trim_override = kwargs.get("trim_existing")
+                chunk_size = kwargs.get("chunk_size", 8)
                 res = run_strategy_all_rebalances(
                     strategy_id,
                     stepup_per_rebalance=stepup,
                     up_to_date=up_to,
                     username=username,
                     trim_existing=trim_override,
-                    enforce_time_limit=False
+                    enforce_time_limit=True,
+                    max_runs_per_chunk=chunk_size,
+                    progress_callback=_update_progress,
                 )
             else:
                 raise ValueError(f"Unknown job type: {job_type}")
 
             res_strat = res.get("strategy") if isinstance(res, dict) and isinstance(res.get("strategy"), dict) else res
-            runs_cnt = len(res_strat.get("runs") or []) if isinstance(res_strat, dict) else None
+            runs_cnt = len(res_strat.get("runs") or []) if isinstance(res_strat, dict) else (res.get("runs_count") if isinstance(res, dict) else None)
+            next_rebal = res.get("next_rebalance_date") if isinstance(res, dict) and "next_rebalance_date" in res else (res_strat.get("next_rebalance_date") if isinstance(res_strat, dict) else None)
 
             with _JOBS_LOCK:
                 if job_id in _EXECUTION_JOBS:
                     _EXECUTION_JOBS[job_id]["status"] = "COMPLETED"
                     _EXECUTION_JOBS[job_id]["completed_at"] = datetime.now().isoformat()
                     _EXECUTION_JOBS[job_id]["runs_count"] = runs_cnt
-                    _EXECUTION_JOBS[job_id]["result"] = res
+                    _EXECUTION_JOBS[job_id]["init_executed"] = bool(res.get("init_executed", False)) if isinstance(res, dict) else (job_type == "INIT")
+                    _EXECUTION_JOBS[job_id]["rebalances_executed"] = int(res.get("rebalances_executed", 0)) if isinstance(res, dict) else (1 if job_type == "REBALANCE" else 0)
+                    _EXECUTION_JOBS[job_id]["total_runs_executed"] = int(res.get("total_runs_executed", 1)) if isinstance(res, dict) else 1
+                    _EXECUTION_JOBS[job_id]["has_more"] = bool(res.get("has_more", False)) if isinstance(res, dict) else False
+                    _EXECUTION_JOBS[job_id]["next_rebalance_date"] = next_rebal
+                    _EXECUTION_JOBS[job_id]["message"] = (res.get("message") if isinstance(res, dict) else None) or "Execution completed."
+                    _EXECUTION_JOBS[job_id]["progress"] = _EXECUTION_JOBS[job_id]["message"]
+                    # Never retain bulky full strategy payloads inside _EXECUTION_JOBS RAM
+                    _EXECUTION_JOBS[job_id]["result"] = None
                     _save_jobs_to_disk_locked()
             logger.info(f"Async job {job_id} ({job_type}) completed successfully")
         except Exception as e:
