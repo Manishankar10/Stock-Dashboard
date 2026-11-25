@@ -4419,8 +4419,10 @@
                                 tooltipEl.style.backdropFilter = 'blur(10px)';
                                 tooltipEl.style.webkitBackdropFilter = 'blur(10px)';
                                 tooltipEl.style.padding = '10px 14px';
-                                tooltipEl.style.minWidth = '245px';
-                                tooltipEl.style.maxWidth = '380px';
+                                tooltipEl.style.minWidth = '295px';
+                                tooltipEl.style.width = 'max-content';
+                                tooltipEl.style.maxWidth = 'none';
+                                tooltipEl.style.whiteSpace = 'nowrap';
                                 tooltipEl.style.boxSizing = 'border-box';
                                 chart.canvas.parentNode.appendChild(tooltipEl);
                             }
@@ -4463,42 +4465,40 @@
                                 const mutedLabel = isDark ? '#94a3b8' : '#475569';
                                 const amtColor = isDark ? '#e2e8f0' : '#1e293b';
                                 const dividerColor = isDark ? 'rgba(255, 255, 255, 0.09)' : 'rgba(15, 23, 42, 0.09)';
+                                const titleColBase = 'width: 152px; min-width: 152px; flex: 0 0 152px; white-space: nowrap;';
 
                                 const eligStr = pt.eligible_count ? ` (${pt.eligible_count})` : '';
                                 const milestoneBadge = pt.milestone
-                                    ? `<span style="font-size: 10px; font-weight: 600; color: ${mutedLabel}; background: ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(15,23,42,0.06)'}; padding: 1px 6px; border-radius: 4px;">${escapeHtml(pt.milestone)}</span>`
+                                    ? `<span style="font-size: 10px; font-weight: 600; color: ${mutedLabel}; background: ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(15,23,42,0.06)'}; padding: 1px 6px; border-radius: 4px; white-space: nowrap;">${escapeHtml(pt.milestone)}</span>`
                                     : '';
 
                                 let html = `
-                                    <div style="font-size: 11px; font-weight: 700; color: ${titleColor}; margin-bottom: 8px; border-bottom: 1px solid ${dividerColor}; padding-bottom: 5px; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
-                                        <span>📅 ${escapeHtml(dateLabel)}</span>
+                                    <div style="font-size: 11px; font-weight: 700; color: ${titleColor}; margin-bottom: 8px; border-bottom: 1px solid ${dividerColor}; padding-bottom: 5px; display: flex; align-items: center; justify-content: space-between; gap: 14px; white-space: nowrap;">
+                                        <span style="white-space: nowrap;">📅 ${escapeHtml(dateLabel)}</span>
                                         ${milestoneBadge}
                                     </div>
-                                    <div style="display: flex; flex-direction: column; gap: 6px;">
-                                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 14px; font-size: 11.5px;">
-                                            <span style="display: flex; align-items: center; gap: 6px; color: ${labelColor}; font-weight: 600;">
-                                                <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #10b981;"></span>
+                                    <div style="display: flex; flex-direction: column; gap: 6px; white-space: nowrap;">
+                                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; font-size: 11.5px; white-space: nowrap;">
+                                            <span style="${titleColBase} display: inline-flex; align-items: center; gap: 6px; color: ${labelColor}; font-weight: 600;">
+                                                <span style="display: inline-block; width: 8px; height: 8px; flex-shrink: 0; border-radius: 50%; background: #10b981;"></span>
                                                 <span>Portfolio Value${escapeHtml(eligStr)}</span>
                                             </span>
-                                            <span style="display: flex; align-items: center; gap: 6px;">
-                                                <span style="font-family: monospace; font-weight: 600; color: ${amtColor};">₹${formatCurrency(val)}</span>
+                                            <span style="font-family: monospace; font-weight: 600; color: ${amtColor}; white-space: nowrap;">₹${formatCurrency(val)}</span>
+                                        </div>
+                                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; font-size: 11.5px; white-space: nowrap;">
+                                            <span style="${titleColBase} display: inline-flex; align-items: center; gap: 6px; color: ${mutedLabel}; font-weight: 500;">
+                                                <span style="display: inline-block; width: 8px; height: 8px; flex-shrink: 0; border-radius: 50%; background: #818cf8;"></span>
+                                                <span>Invested Capital</span>
+                                            </span>
+                                            <span style="font-family: monospace; font-weight: 600; color: ${amtColor}; white-space: nowrap;">₹${formatCurrency(inv)}</span>
+                                        </div>
+                                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; font-size: 11.5px; padding-top: 5px; border-top: 1px dashed ${dividerColor}; white-space: nowrap;">
+                                            <span style="${titleColBase} color: ${mutedLabel}; font-weight: 500;">Net Return</span>
+                                            <span style="display: inline-flex; align-items: center; justify-content: flex-end; gap: 6px; white-space: nowrap;">
+                                                <span style="font-family: monospace; font-weight: 600; color: ${amtColor}; white-space: nowrap;">${formatSignedCurrency(pnl)}</span>
                                                 <span style="font-family: monospace; font-size: 11px; font-weight: 700; color: ${pctColor}; background: ${pctBg}; border: 1px solid ${pctBorder}; padding: 1px 6px; border-radius: 4px; white-space: nowrap;">
                                                     ${sign}${pnlPct.toFixed(2)}%
                                                 </span>
-                                            </span>
-                                        </div>
-                                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 14px; font-size: 11.5px;">
-                                            <span style="display: flex; align-items: center; gap: 6px; color: ${mutedLabel}; font-weight: 500;">
-                                                <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #818cf8;"></span>
-                                                <span>Invested Capital</span>
-                                            </span>
-                                            <span style="font-family: monospace; font-weight: 600; color: ${amtColor};">₹${formatCurrency(inv)}</span>
-                                        </div>
-                                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 14px; font-size: 11.5px; padding-top: 5px; border-top: 1px dashed ${dividerColor};">
-                                            <span style="color: ${mutedLabel}; font-weight: 500;">Net Return</span>
-                                            <span style="display: flex; align-items: center; gap: 6px;">
-                                                <span style="font-family: monospace; font-weight: 600; color: ${amtColor};">${sign}₹${formatCurrency(pnl)}</span>
-                                                <span style="font-family: monospace; font-size: 11px; font-weight: 700; color: ${pctColor};">(${sign}${pnlPct.toFixed(2)}%)</span>
                                             </span>
                                         </div>
                                 `;
@@ -4509,20 +4509,20 @@
                                     const chgSign = chgPos ? '+' : '';
                                     const chgColor = chgPos ? '#10b981' : '#ef4444';
                                     html += `
-                                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 14px; font-size: 11.5px;">
-                                            <span style="color: ${mutedLabel}; font-weight: 500;">Period Move</span>
-                                            <span style="font-family: monospace; font-size: 11px; font-weight: 700; color: ${chgColor};">${chgSign}${chgPct.toFixed(2)}%</span>
+                                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; font-size: 11.5px; white-space: nowrap;">
+                                            <span style="${titleColBase} color: ${mutedLabel}; font-weight: 500;">Period Move</span>
+                                            <span style="font-family: monospace; font-size: 11px; font-weight: 700; color: ${chgColor}; white-space: nowrap;">${chgSign}${chgPct.toFixed(2)}%</span>
                                         </div>
                                     `;
                                 }
 
                                 if (pnl < 0) {
                                     html += `
-                                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 14px; font-size: 11px;">
-                                            <span style="color: ${mutedLabel};">🔻 Deficit Below Capital</span>
-                                            <span style="display: flex; align-items: center; gap: 5px;">
-                                                <span style="font-family: monospace; color: ${amtColor};">-₹${formatCurrency(Math.abs(pnl))}</span>
-                                                <span style="font-family: monospace; font-weight: 700; color: #ef4444;">(${pnlPct.toFixed(2)}%)</span>
+                                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; font-size: 11px; white-space: nowrap;">
+                                            <span style="${titleColBase} color: ${mutedLabel};">🔻 Deficit Below Capital</span>
+                                            <span style="display: inline-flex; align-items: center; justify-content: flex-end; gap: 5px; white-space: nowrap;">
+                                                <span style="font-family: monospace; color: ${amtColor}; white-space: nowrap;">-₹${formatCurrency(Math.abs(pnl))}</span>
+                                                <span style="font-family: monospace; font-weight: 700; color: #ef4444; white-space: nowrap;">(${pnlPct.toFixed(2)}%)</span>
                                             </span>
                                         </div>
                                     `;
@@ -4532,22 +4532,23 @@
                                 tooltipEl.innerHTML = html;
                             }
 
-                            const wrapRect = chart.canvas.parentNode.getBoundingClientRect();
-                            const isNearTop = dotY < 160;
-
-                            if (dotX > wrapRect.width - 210) {
-                                tooltipEl.style.left = (dotX - 10) + 'px';
-                                tooltipEl.style.transform = isNearTop ? 'translate(-100%, 14px)' : 'translate(-100%, -100%)';
-                            } else if (dotX < 130) {
-                                tooltipEl.style.left = (dotX + 10) + 'px';
-                                tooltipEl.style.transform = isNearTop ? 'translate(0, 14px)' : 'translate(0, -100%)';
-                            } else {
-                                tooltipEl.style.left = dotX + 'px';
-                                tooltipEl.style.transform = isNearTop ? 'translate(-50%, 14px)' : 'translate(-50%, -100%)';
-                            }
-
-                            tooltipEl.style.top = isNearTop ? (dotY + 'px') : ((dotY - 10) + 'px');
                             tooltipEl.style.display = 'block';
+                            const wrapRect = chart.canvas.parentNode.getBoundingClientRect();
+                            const wrapWidth = wrapRect.width || chart.canvas.parentNode.clientWidth || 600;
+                            const tipW = tooltipEl.offsetWidth || 300;
+                            const isNearTop = dotY < 165;
+
+                            let tipLeft = dotX - (tipW / 2);
+                            if (dotX > wrapWidth - (tipW * 0.65)) {
+                                tipLeft = dotX - tipW - 10;
+                            } else if (dotX < (tipW * 0.65)) {
+                                tipLeft = dotX + 10;
+                            }
+                            tipLeft = Math.max(8, Math.min(tipLeft, wrapWidth - tipW - 8));
+
+                            tooltipEl.style.left = tipLeft + 'px';
+                            tooltipEl.style.top = isNearTop ? ((dotY + 14) + 'px') : ((dotY - 10) + 'px');
+                            tooltipEl.style.transform = isNearTop ? 'translateY(0)' : 'translateY(-100%)';
                             tooltipEl.style.opacity = '1';
                         }
                     }
