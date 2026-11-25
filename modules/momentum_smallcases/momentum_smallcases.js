@@ -4335,6 +4335,8 @@
             currentPerformanceGraphState.chartInstance.destroy();
             currentPerformanceGraphState.chartInstance = null;
         }
+        const existingPerfTip = document.getElementById('mscPerfChartCustomTooltip');
+        if (existingPerfTip) existingPerfTip.remove();
 
         const ctx = canvas.getContext('2d');
         const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
@@ -4399,51 +4401,154 @@
                         display: false
                     },
                     tooltip: {
-                        backgroundColor: isDark ? 'rgba(15, 23, 42, 0.96)' : 'rgba(255, 255, 255, 0.98)',
-                        titleColor: isDark ? '#ffffff' : '#0f172a',
-                        bodyColor: isDark ? '#cbd5e1' : '#334155',
-                        borderColor: isDark ? 'rgba(255, 255, 255, 0.16)' : 'rgba(0, 0, 0, 0.12)',
-                        borderWidth: 1,
-                        padding: 14,
-                        boxPadding: 6,
-                        cornerRadius: 8,
-                        boxPadding: 4,
-                        callbacks: {
-                            label: function(context) {
-                                const val = Number(context.raw) || 0;
-                                const idx = context.dataIndex;
-                                const points = data.points || [];
-                                const pt = points[idx];
-                                const eligStr = (context.datasetIndex === 0 && pt && pt.eligible_count) ? ` (${pt.eligible_count})` : '';
-                                return `  ${context.dataset.label}${eligStr}: ₹${formatCurrency(val)}`;
-                            },
-                            labelTextColor: function(context) {
-                                const idx = context.dataIndex;
-                                const points = data.points || [];
-                                const pt = points[idx];
-                                if (!pt) return '#ffffff';
-                                const inv = pt.invested || 0;
-                                const val = pt.portfolio_value || 0;
-                                return (val - inv) >= 0 ? '#10b981' : '#ef4444';
-                            },
-                            afterBody: function(tooltipItems) {
-                                if (!tooltipItems || tooltipItems.length === 0) return '';
-                                const idx = tooltipItems[0].dataIndex;
-                                const points = data.points || [];
-                                const pt = points[idx];
-                                if (!pt) return '';
-                                const inv = pt.invested || 0;
-                                const val = pt.portfolio_value || 0;
-                                const pnl = val - inv;
-                                const pnlPct = inv > 0 ? (pnl / inv) * 100 : 0;
-                                const pnlStr = `${pnl >= 0 ? '+' : ''}₹${formatCurrency(pnl)} (${pnl >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%)`;
-                                const dayChangeStr = pt.change_percent !== undefined ? `\n  Period Move: ${pt.change_percent >= 0 ? '+' : ''}${pt.change_percent.toFixed(2)}%` : '';
-                                let drilldownStr = '';
-                                if (pnl < 0) {
-                                    drilldownStr = `\n  🔻 Deficit Below Capital: -₹${formatCurrency(Math.abs(pnl))} (${pnlPct.toFixed(2)}%)`;
-                                }
-                                return `  Net Return: ${pnlStr}${dayChangeStr}${drilldownStr}`;
+                        enabled: false,
+                        external: function(context) {
+                            const { chart, tooltip } = context;
+                            let tooltipEl = document.getElementById('mscPerfChartCustomTooltip');
+                            if (!tooltipEl) {
+                                tooltipEl = document.createElement('div');
+                                tooltipEl.id = 'mscPerfChartCustomTooltip';
+                                tooltipEl.style.position = 'absolute';
+                                tooltipEl.style.pointerEvents = 'none';
+                                tooltipEl.style.zIndex = '30';
+                                tooltipEl.style.transition = 'opacity 0.12s ease, transform 0.12s ease';
+                                tooltipEl.style.background = isDark ? 'rgba(15, 23, 42, 0.96)' : 'rgba(255, 255, 255, 0.98)';
+                                tooltipEl.style.border = isDark ? '1px solid rgba(255, 255, 255, 0.16)' : '1px solid rgba(15, 23, 42, 0.14)';
+                                tooltipEl.style.borderRadius = '8px';
+                                tooltipEl.style.boxShadow = isDark ? '0 12px 30px rgba(0, 0, 0, 0.6)' : '0 10px 25px rgba(15, 23, 42, 0.15)';
+                                tooltipEl.style.backdropFilter = 'blur(10px)';
+                                tooltipEl.style.webkitBackdropFilter = 'blur(10px)';
+                                tooltipEl.style.padding = '10px 14px';
+                                tooltipEl.style.minWidth = '245px';
+                                tooltipEl.style.maxWidth = '380px';
+                                tooltipEl.style.boxSizing = 'border-box';
+                                chart.canvas.parentNode.appendChild(tooltipEl);
                             }
+
+                            if (tooltip.opacity === 0) {
+                                tooltipEl.style.opacity = '0';
+                                tooltipEl.style.display = 'none';
+                                return;
+                            }
+
+                            const activeEls = chart.getActiveElements();
+                            let dotX = tooltip.caretX;
+                            let dotY = tooltip.caretY;
+                            if (activeEls && activeEls.length > 0 && activeEls[0].element) {
+                                const ptEl = activeEls[0].element;
+                                if (typeof ptEl.x === 'number' && typeof ptEl.y === 'number') {
+                                    dotX = ptEl.x;
+                                    dotY = ptEl.y;
+                                }
+                            }
+
+                            if (tooltip.dataPoints && tooltip.dataPoints.length > 0) {
+                                const idx = tooltip.dataPoints[0].dataIndex;
+                                const points = data.points || [];
+                                const pt = points[idx] || {};
+                                const dateLabel = labels[idx] || (tooltip.title ? tooltip.title[0] : '');
+
+                                const inv = pt.invested != null ? Number(pt.invested) : Number(investedData[idx] || 0);
+                                const val = pt.portfolio_value != null ? Number(pt.portfolio_value) : Number(portfolioData[idx] || 0);
+                                const pnl = val - inv;
+                                const pnlPct = inv > 0 ? ((pnl / inv) * 100) : 0;
+                                const isPos = pnl >= 0;
+                                const sign = isPos ? '+' : '';
+                                const pctColor = isPos ? '#10b981' : '#ef4444';
+                                const pctBg = isPos ? 'rgba(16, 185, 129, 0.16)' : 'rgba(239, 68, 68, 0.16)';
+                                const pctBorder = isPos ? 'rgba(16, 185, 129, 0.35)' : 'rgba(239, 68, 68, 0.35)';
+
+                                const titleColor = isDark ? '#94a3b8' : '#64748b';
+                                const labelColor = isDark ? '#f8fafc' : '#0f172a';
+                                const mutedLabel = isDark ? '#94a3b8' : '#475569';
+                                const amtColor = isDark ? '#e2e8f0' : '#1e293b';
+                                const dividerColor = isDark ? 'rgba(255, 255, 255, 0.09)' : 'rgba(15, 23, 42, 0.09)';
+
+                                const eligStr = pt.eligible_count ? ` (${pt.eligible_count})` : '';
+                                const milestoneBadge = pt.milestone
+                                    ? `<span style="font-size: 10px; font-weight: 600; color: ${mutedLabel}; background: ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(15,23,42,0.06)'}; padding: 1px 6px; border-radius: 4px;">${escapeHtml(pt.milestone)}</span>`
+                                    : '';
+
+                                let html = `
+                                    <div style="font-size: 11px; font-weight: 700; color: ${titleColor}; margin-bottom: 8px; border-bottom: 1px solid ${dividerColor}; padding-bottom: 5px; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+                                        <span>📅 ${escapeHtml(dateLabel)}</span>
+                                        ${milestoneBadge}
+                                    </div>
+                                    <div style="display: flex; flex-direction: column; gap: 6px;">
+                                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 14px; font-size: 11.5px;">
+                                            <span style="display: flex; align-items: center; gap: 6px; color: ${labelColor}; font-weight: 600;">
+                                                <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #10b981;"></span>
+                                                <span>Portfolio Value${escapeHtml(eligStr)}</span>
+                                            </span>
+                                            <span style="display: flex; align-items: center; gap: 6px;">
+                                                <span style="font-family: monospace; font-weight: 600; color: ${amtColor};">₹${formatCurrency(val)}</span>
+                                                <span style="font-family: monospace; font-size: 11px; font-weight: 700; color: ${pctColor}; background: ${pctBg}; border: 1px solid ${pctBorder}; padding: 1px 6px; border-radius: 4px; white-space: nowrap;">
+                                                    ${sign}${pnlPct.toFixed(2)}%
+                                                </span>
+                                            </span>
+                                        </div>
+                                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 14px; font-size: 11.5px;">
+                                            <span style="display: flex; align-items: center; gap: 6px; color: ${mutedLabel}; font-weight: 500;">
+                                                <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #818cf8;"></span>
+                                                <span>Invested Capital</span>
+                                            </span>
+                                            <span style="font-family: monospace; font-weight: 600; color: ${amtColor};">₹${formatCurrency(inv)}</span>
+                                        </div>
+                                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 14px; font-size: 11.5px; padding-top: 5px; border-top: 1px dashed ${dividerColor};">
+                                            <span style="color: ${mutedLabel}; font-weight: 500;">Net Return</span>
+                                            <span style="display: flex; align-items: center; gap: 6px;">
+                                                <span style="font-family: monospace; font-weight: 600; color: ${amtColor};">${sign}₹${formatCurrency(pnl)}</span>
+                                                <span style="font-family: monospace; font-size: 11px; font-weight: 700; color: ${pctColor};">(${sign}${pnlPct.toFixed(2)}%)</span>
+                                            </span>
+                                        </div>
+                                `;
+
+                                if (pt.change_percent !== undefined && pt.change_percent !== null) {
+                                    const chgPct = Number(pt.change_percent) || 0;
+                                    const chgPos = chgPct >= 0;
+                                    const chgSign = chgPos ? '+' : '';
+                                    const chgColor = chgPos ? '#10b981' : '#ef4444';
+                                    html += `
+                                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 14px; font-size: 11.5px;">
+                                            <span style="color: ${mutedLabel}; font-weight: 500;">Period Move</span>
+                                            <span style="font-family: monospace; font-size: 11px; font-weight: 700; color: ${chgColor};">${chgSign}${chgPct.toFixed(2)}%</span>
+                                        </div>
+                                    `;
+                                }
+
+                                if (pnl < 0) {
+                                    html += `
+                                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 14px; font-size: 11px;">
+                                            <span style="color: ${mutedLabel};">🔻 Deficit Below Capital</span>
+                                            <span style="display: flex; align-items: center; gap: 5px;">
+                                                <span style="font-family: monospace; color: ${amtColor};">-₹${formatCurrency(Math.abs(pnl))}</span>
+                                                <span style="font-family: monospace; font-weight: 700; color: #ef4444;">(${pnlPct.toFixed(2)}%)</span>
+                                            </span>
+                                        </div>
+                                    `;
+                                }
+
+                                html += `</div>`;
+                                tooltipEl.innerHTML = html;
+                            }
+
+                            const wrapRect = chart.canvas.parentNode.getBoundingClientRect();
+                            const isNearTop = dotY < 160;
+
+                            if (dotX > wrapRect.width - 210) {
+                                tooltipEl.style.left = (dotX - 10) + 'px';
+                                tooltipEl.style.transform = isNearTop ? 'translate(-100%, 14px)' : 'translate(-100%, -100%)';
+                            } else if (dotX < 130) {
+                                tooltipEl.style.left = (dotX + 10) + 'px';
+                                tooltipEl.style.transform = isNearTop ? 'translate(0, 14px)' : 'translate(0, -100%)';
+                            } else {
+                                tooltipEl.style.left = dotX + 'px';
+                                tooltipEl.style.transform = isNearTop ? 'translate(-50%, 14px)' : 'translate(-50%, -100%)';
+                            }
+
+                            tooltipEl.style.top = isNearTop ? (dotY + 'px') : ((dotY - 10) + 'px');
+                            tooltipEl.style.display = 'block';
+                            tooltipEl.style.opacity = '1';
                         }
                     }
                 },
@@ -4516,6 +4621,8 @@
     function closePerformanceGraphModal() {
         const modal = document.getElementById('performanceGraphModal');
         const dock = document.getElementById('mscPerformanceGraphDock');
+        const tip = document.getElementById('mscPerfChartCustomTooltip');
+        if (tip) tip.style.display = 'none';
         if (modal) modal.style.display = 'none';
         if (dock) dock.style.display = 'none';
 
