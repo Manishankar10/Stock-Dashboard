@@ -48,27 +48,23 @@ START_TIMESTAMP_2013 = 1356998400  # 2013-01-01 00:00:00 UTC
 def compute_stock_monthly_prices(prices: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
     Computes monthly average prices, close-to-close returns, and avg-to-avg returns
-    from chronological daily price series [{'d': 'YYYY-MM-DD', 'c': float}].
+    from daily price series [{'d': 'YYYY-MM-DD', 'c': float}].
+    Deduplicates and sorts daily prices first so duplicate daily bars or out-of-order rows
+    cannot distort monthly averages, and returns one unique entry per month ('YYYY-MM')
+    including the latest (even partial/ongoing) month.
     """
-    if not prices:
+    clean_prices = db_store.normalize_and_deduplicate_prices(prices)
+    if not clean_prices:
         return []
 
-    months_dict = {}
-    for p in prices:
-        d = p.get("d") or ""
-        c = p.get("c")
-        if not d or c is None:
-            continue
-        try:
-            c_val = float(c)
-            if c_val <= 0:
-                continue
-        except (ValueError, TypeError):
-            continue
+    months_dict: Dict[str, List[float]] = {}
+    for p in clean_prices:
+        d = p["d"]
+        c_val = p["c"]
         m_key = d[:7]  # 'YYYY-MM'
         if m_key not in months_dict:
             months_dict[m_key] = []
-        months_dict[m_key].append((d, c_val))
+        months_dict[m_key].append(c_val)
 
     sorted_months = sorted(months_dict.keys())
     monthly_prices = []
@@ -76,8 +72,7 @@ def compute_stock_monthly_prices(prices: List[Dict[str, Any]]) -> List[Dict[str,
     prev_avg_close = None
 
     for m in sorted_months:
-        bars = months_dict[m]
-        closes = [b[1] for b in bars]
+        closes = months_dict[m]
         avg_close = round(sum(closes) / len(closes), 2)
         first_close = round(closes[0], 2)
         last_close = round(closes[-1], 2)
@@ -109,7 +104,7 @@ def compute_stock_monthly_prices(prices: List[Dict[str, Any]]) -> List[Dict[str,
         prev_last_close = last_close
         prev_avg_close = avg_close
 
-    return monthly_prices
+    return db_store.normalize_and_deduplicate_monthly_prices(monthly_prices)
 
 
 
@@ -418,43 +413,79 @@ class StockClosingPricesProvider:
                 self._persist_telemetry()
                 return
 
-            logger.info(f"Computing monthly averages & returns for {total_stocks} stocks in MongoDB (streaming mode)...")
+            logger.info(f"Computing monthly averages & returns for {total_stocks} stocks in MongoDB (overwriting through last month, zero duplicates)...")
             from pymongo import UpdateOne
             batch_size = 25
-            ops = []
             updated_count = 0
 
-            # Stream cursor with minimal projection to prevent memory overhead
-            cursor = col.find({}, {"_id": 1, "symbol": 1, "prices": 1}, batch_size=25)
-            for d in cursor:
-                sym = d.get("_id") or d.get("symbol")
-                prices = db_store.normalize_and_deduplicate_prices(d.get("prices") or [])
-                monthly_prices = compute_stock_monthly_prices(prices)
-                ops.append(UpdateOne(
-                    {"_id": sym},
-                    {"$set": {"monthly_prices": monthly_prices}}
+            # Snapshot sorted document IDs up front to avoid cursor timeouts or skipped docs on concurrent updates
+            doc_ids = sorted(
+                doc["_id"] for doc in col.find({}, {"_id": 1}) if doc.get("_id") is not None
+            )
+            total_stocks = len(doc_ids)
+
+            for i in range(0, total_stocks, batch_size):
+                chunk_ids = doc_ids[i : i + batch_size]
+                chunk_docs = list(col.find(
+                    {"_id": {"$in": chunk_ids}},
+                    {"_id": 1, "symbol": 1, "prices": 1, "latest_date": 1, "latest_close": 1, "total_records": 1}
                 ))
-                if len(ops) >= batch_size:
+                ops = []
+                for d in chunk_docs:
+                    sym = d.get("_id") or d.get("symbol")
+                    raw_prices = d.get("prices") or []
+                    prices = db_store.normalize_and_deduplicate_prices(raw_prices)
+                    monthly_prices = compute_stock_monthly_prices(prices)
+                    set_doc: Dict[str, Any] = {"monthly_prices": monthly_prices}
+
+                    # Also heal duplicate/unsorted daily prices or stale summary fields if present
+                    needs_price_repair = len(prices) != len(raw_prices)
+                    if not needs_price_repair and prices:
+                        needs_price_repair = any(
+                            (str(p.get("d", "")).strip()[:10] != cp["d"] or round(float(p["c"]), 2) != cp["c"])
+                            for p, cp in zip(raw_prices, prices)
+                        )
+                    if needs_price_repair or (prices and (
+                        str(d.get("latest_date") or "").strip()[:10] != prices[-1]["d"]
+                        or int(d.get("total_records") or 0) != len(prices)
+                    )):
+                        l_close = prices[-1]["c"] if prices else 0.0
+                        p_close = prices[-2]["c"] if len(prices) > 1 else l_close
+                        chg = round(l_close - p_close, 2)
+                        chg_pct = round((chg / p_close * 100.0) if p_close else 0.0, 2)
+                        set_doc.update({
+                            "prices": prices,
+                            "start_date": prices[0]["d"] if prices else "",
+                            "latest_date": prices[-1]["d"] if prices else "",
+                            "latest_close": l_close,
+                            "prev_close": p_close,
+                            "change": chg,
+                            "change_pct": chg_pct,
+                            "total_records": len(prices)
+                        })
+
+                    ops.append(UpdateOne(
+                        {"_id": sym},
+                        {"$set": set_doc}
+                    ))
+
+                if ops:
                     col.bulk_write(ops, ordered=False)
                     updated_count += len(ops)
                     with self._lock:
-                        self._percent = int((updated_count / total_stocks) * 100)
+                        self._percent = int((updated_count / total_stocks) * 100) if total_stocks else 100
                         self._synced_stocks_count = updated_count
-                        self._progress = f"Calculated monthly averages for {updated_count}/{total_stocks} stocks..."
+                        self._progress = f"Calculated & overwritten monthly averages for {updated_count}/{total_stocks} stocks..."
                     self._persist_telemetry()
-                    ops = []
-
-            if ops:
-                col.bulk_write(ops, ordered=False)
-                updated_count += len(ops)
 
             now_disp = format_ist_display()
             logger.info(f"Successfully updated monthly averages for {updated_count}/{total_stocks} stocks in MongoDB Atlas.")
 
             with self._lock:
                 self._is_syncing = False
+                self._last_error = None
                 self._percent = 100
-                self._progress = f"Monthly average prices & returns calculated for all {updated_count} stocks."
+                self._progress = f"Monthly average prices & returns overwritten (including last month) for all {updated_count} stocks."
                 self._last_synced_display = now_disp
             self._persist_telemetry()
 
@@ -465,16 +496,23 @@ class StockClosingPricesProvider:
                     {"$set": {
                         "monthly_averages_synced": True,
                         "monthly_averages_updated_at": format_ist_iso(),
-                        "progress": f"Monthly average prices & returns calculated for all {updated_count} stocks."
+                        "progress": f"Monthly average prices & returns overwritten (including last month) for all {updated_count} stocks."
                     }},
                     upsert=True
                 )
+            except Exception:
+                pass
+
+            try:
+                from modules.momentum_smallcases.index_comparator import clear_comparison_cache
+                clear_comparison_cache()
             except Exception:
                 pass
         except Exception as e:
             logger.error(f"Error computing monthly averages: {e}", exc_info=True)
             with self._lock:
                 self._is_syncing = False
+                self._last_error = str(e)
                 self._progress = f"Error computing monthly averages: {str(e)}"
             self._persist_telemetry()
 

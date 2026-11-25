@@ -38,6 +38,36 @@ def normalize_and_deduplicate_prices(prices, min_date: str = "", max_date: str =
     return [{"d": d, "c": dedup[d]} for d in sorted(dedup.keys())]
 
 
+def normalize_and_deduplicate_monthly_prices(monthly_prices):
+    """
+    Validates, deduplicates by month key ('YYYY-MM'), and chronologically sorts
+    monthly average records. When duplicate months exist, the latest entry overwrites
+    earlier duplicates so each month appears at most once.
+    """
+    dedup = {}
+    for entry in (monthly_prices or []):
+        if not isinstance(entry, dict):
+            continue
+        raw_m = entry.get("m")
+        if raw_m is None:
+            continue
+        m_str = str(raw_m).strip()[:7]
+        if len(m_str) != 7 or m_str[4] != "-":
+            continue
+        try:
+            year_val = int(m_str[:4])
+            month_val = int(m_str[5:7])
+            if year_val < 1990 or not (1 <= month_val <= 12):
+                continue
+        except (ValueError, TypeError):
+            continue
+        clean_item = dict(entry)
+        clean_item["m"] = m_str
+        dedup[m_str] = clean_item
+
+    return [dedup[m] for m in sorted(dedup.keys())]
+
+
 def inspect_stock_closing_prices_latest_db():
     """
     Inspects each stock in MongoDB stock_closing_prices via server-side aggregation
@@ -2156,9 +2186,9 @@ def save_stock_closing_prices_db(records):
         if not sym:
             continue
         cname = str(r.get("company_name", sym)).strip()
-        # Enforce strict per-date deduplication and chronological order before persisting to MongoDB
+        # Enforce strict per-date and per-month deduplication and chronological order before persisting to MongoDB
         prices = normalize_and_deduplicate_prices(r.get("prices", []))
-        monthly_prices = r.get("monthly_prices", [])
+        monthly_prices = normalize_and_deduplicate_monthly_prices(r.get("monthly_prices", []))
         tot = len(prices)
         s_date = prices[0]["d"] if prices else str(r.get("start_date") or "")
         l_date = prices[-1]["d"] if prices else str(r.get("latest_date") or "")

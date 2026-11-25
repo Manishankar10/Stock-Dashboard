@@ -7083,6 +7083,7 @@
                         message: s.progress || 'Ingesting closing prices from Yahoo Finance...',
                         percent: s.percent || 0,
                         totalStr: `${totalStocks} Stocks`,
+                        customSuccessMsg: (!isSyncing && s.progress && s.progress !== 'Ready') ? s.progress : undefined,
                         error: s.last_error
                     });
                 }
@@ -7160,7 +7161,7 @@
         }
 
         window.triggerAdminSyncMonthlyAverages = async function() {
-            if (!confirm("Calculate monthly average prices and monthly returns for all constituent stocks in MongoDB Atlas?\n\nThis streams all constituent stocks directly from MongoDB Atlas and updates them in-place with monthly averages and returns in the background.")) {
+            if (!confirm("Calculate and overwrite monthly average prices and monthly returns for all constituent stocks in MongoDB Atlas?\n\nThis recalculates all months (including overwriting the latest/last month) cleanly with zero duplicate months.")) {
                 return;
             }
             const btn = document.getElementById('sync-tbl-btn-monthly-averages');
@@ -7172,7 +7173,7 @@
                 if (typeof updateSyncSummaryTableRow === 'function') {
                     updateSyncSummaryTableRow('stock_prices', {
                         isSyncing: true,
-                        message: 'Calculating monthly average prices & returns in MongoDB Atlas...',
+                        message: 'Recalculating & overwriting monthly averages in MongoDB Atlas...',
                         percent: 5
                     });
                 }
@@ -7184,9 +7185,16 @@
                 if (data.success) {
                     loadAdminStockPricesStatus();
                 } else {
-                    alert(`❌ Error: ${data.error || 'Failed to start monthly averages calculation'}`);
+                    const errMsg = data.error || data.message || 'Failed to start monthly averages calculation';
+                    if (typeof updateSyncSummaryTableRow === 'function') {
+                        updateSyncSummaryTableRow('stock_prices', { isSyncing: false, error: errMsg });
+                    }
+                    alert(`❌ Error: ${errMsg}`);
                 }
             } catch (e) {
+                if (typeof updateSyncSummaryTableRow === 'function') {
+                    updateSyncSummaryTableRow('stock_prices', { isSyncing: false, error: e.message });
+                }
                 alert(`❌ Request Error: ${e.message}`);
             } finally {
                 if (btn) {
