@@ -9,9 +9,51 @@ import uuid
 import json
 import logging
 import threading
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from flask import session
 from modules.common.ist_datetime import now_ist
+
+
+def _extract_strategy_symbols(target, constituents=None):
+    """Collects unique constituent and holding symbols for prewarming."""
+    symbols = set()
+    for c in (constituents or []):
+        if isinstance(c, dict) and c.get("symbol"):
+            symbols.add(c["symbol"])
+        elif isinstance(c, str):
+            symbols.add(c)
+    for h in (target.get("holdings") or []):
+        if isinstance(h, dict) and h.get("symbol"):
+            symbols.add(h["symbol"])
+    return symbols
+
+
+def _prewarm_symbols_for_window(symbols_to_warm, min_date_str=None, max_date_str=None, cutoff_date=None, save_cache=True):
+    """
+    Pre-warms MongoDB stock_closing_prices via Pattern 2 $filter date window first,
+    and falls back cleanly (capped at 8 workers) only for symbols missing from DB.
+    """
+    if not symbols_to_warm:
+        return
+    from concurrent.futures import ThreadPoolExecutor
+    from modules.momentum_smallcases.momentum_smallcases_calculator import (
+        prewarm_stock_prices_cache,
+        get_stock_closing_prices_from_db,
+        fetch_stock_daily_series,
+        save_price_cache,
+    )
+    prewarm_stock_prices_cache(symbols_to_warm, min_date=min_date_str, max_date=max_date_str)
+    cutoff_str = max_date_str or (cutoff_date.isoformat() if cutoff_date else None)
+    missing_from_db = [
+        sym for sym in symbols_to_warm
+        if not get_stock_closing_prices_from_db(sym, target_cutoff_str=cutoff_str)
+    ]
+    if missing_from_db:
+        worker_count = min(8, max(2, len(missing_from_db)))
+        with ThreadPoolExecutor(max_workers=worker_count) as pool:
+            list(pool.map(lambda s: fetch_stock_daily_series(s, target_cutoff_date=cutoff_date), missing_from_db))
+        if save_cache:
+            save_price_cache()
 
 logger = logging.getLogger(__name__)
 
@@ -554,7 +596,7 @@ def create_user_strategy(
     except Exception:
         raise ValueError("Start date must be in YYYY-MM-DD format")
 
-    today_d = date.today()
+    today_d = now_ist().date()
     if start_d > today_d:
         raise ValueError(f"Start date ({start_d.strftime('%d/%m/%Y')}) cannot be in the future (today is {today_d.strftime('%d/%m/%Y')}).")
 
@@ -744,7 +786,7 @@ def run_strategy_init(strategy_id, username=None):
     holidays_set = get_official_trading_holidays()
     exec_date, was_moved = get_next_trading_day(start_d, holidays_set)
 
-    today_d = date.today()
+    today_d = now_ist().date()
     if exec_date > today_d:
         moved_note = f" (adjusted from {start_d.strftime('%d/%m/%Y')})" if was_moved else ""
         raise ValueError(
@@ -761,26 +803,18 @@ def run_strategy_init(strategy_id, username=None):
     if not constituents:
         raise ValueError(f"Index '{target.get('index_name')}' contains 0 constituent stocks. Please add stocks in Manual Indices.")
 
-    # 1.1 Pre-warm daily quotes in parallel for all index constituents to prevent 502 Bad Gateway timeouts
-    symbols_to_warm = set()
-    for c in (constituents or []):
-        if isinstance(c, dict) and c.get("symbol"):
-            symbols_to_warm.add(c["symbol"])
-        elif isinstance(c, str):
-            symbols_to_warm.add(c)
-
+    # 1.1 Pre-warm daily quotes in parallel for the needed lookback window (~450d)
+    symbols_to_warm = _extract_strategy_symbols(target, constituents)
     if symbols_to_warm:
-        from modules.momentum_smallcases.momentum_smallcases_calculator import (
-            prewarm_stock_prices_cache,
-            fetch_stock_daily_series,
-            save_price_cache,
+        win_min = (exec_date - timedelta(days=450)).isoformat()
+        win_max = exec_date.isoformat()
+        _prewarm_symbols_for_window(
+            symbols_to_warm,
+            min_date_str=win_min,
+            max_date_str=win_max,
+            cutoff_date=exec_date,
+            save_cache=True
         )
-        prewarm_stock_prices_cache(symbols_to_warm)
-        from concurrent.futures import ThreadPoolExecutor
-        worker_count = min(32, max(4, len(symbols_to_warm)))
-        with ThreadPoolExecutor(max_workers=worker_count) as pool:
-            list(pool.map(lambda s: fetch_stock_daily_series(s, target_cutoff_date=exec_date), symbols_to_warm))
-        save_price_cache()
 
     # 2. Evaluate and rank stocks
     ranked_stocks, eligible_count, meta = rank_and_evaluate_universe(
@@ -912,7 +946,7 @@ def run_strategy_rebalance(strategy_id, stepup_amount=0.0, username=None, save_c
     holidays_set = get_official_trading_holidays()
     exec_date, was_moved = get_next_trading_day(rebal_d, holidays_set)
 
-    today_d = date.today()
+    today_d = now_ist().date()
     if exec_date > today_d:
         moved_note = f" (adjusted from {rebal_d.strftime('%d/%m/%Y')})" if was_moved else ""
         raise ValueError(
@@ -944,29 +978,19 @@ def run_strategy_rebalance(strategy_id, stepup_amount=0.0, username=None, save_c
     if not constituents:
         raise ValueError("No constituents found for index")
 
-    # Standalone rebalance pre-warming
+    # Standalone rebalance windowed pre-warming (~450d lookback up to exec_date)
     if save_cache:
-        symbols_to_warm = set()
-        for c in (constituents or []):
-            if isinstance(c, dict) and c.get("symbol"):
-                symbols_to_warm.add(c["symbol"])
-            elif isinstance(c, str):
-                symbols_to_warm.add(c)
-        for h in target.get("holdings", []):
-            if isinstance(h, dict) and h.get("symbol"):
-                symbols_to_warm.add(h["symbol"])
+        symbols_to_warm = _extract_strategy_symbols(target, constituents)
         if symbols_to_warm:
-            from modules.momentum_smallcases.momentum_smallcases_calculator import (
-                prewarm_stock_prices_cache,
-                fetch_stock_daily_series,
-                save_price_cache,
+            win_min = (exec_date - timedelta(days=450)).isoformat()
+            win_max = exec_date.isoformat()
+            _prewarm_symbols_for_window(
+                symbols_to_warm,
+                min_date_str=win_min,
+                max_date_str=win_max,
+                cutoff_date=exec_date,
+                save_cache=True
             )
-            prewarm_stock_prices_cache(symbols_to_warm)
-            from concurrent.futures import ThreadPoolExecutor
-            worker_count = min(32, max(4, len(symbols_to_warm)))
-            with ThreadPoolExecutor(max_workers=worker_count) as pool:
-                list(pool.map(lambda s: fetch_stock_daily_series(s, target_cutoff_date=exec_date), symbols_to_warm))
-            save_price_cache()
 
     # Rank universe
     ranked_stocks, eligible_count, meta = rank_and_evaluate_universe(
@@ -1275,20 +1299,15 @@ def run_strategy_withdrawal(strategy_id, withdrawals, comments="", username=None
     }
 
 
-def run_strategy_all_rebalances(strategy_id, stepup_per_rebalance=0.0, up_to_date=None, username=None, trim_existing=None):
+def run_strategy_all_rebalances(strategy_id, stepup_per_rebalance=0.0, up_to_date=None, username=None, trim_existing=None, enforce_time_limit=True):
     """
     Executes Init (if strategy is in DRAFT status) and then sequentially executes
     all scheduled monthly rebalances up to up_to_date (defaults to today).
     Each rebalance run receives the specified stepup_per_rebalance capital amount.
-    Pre-warms all universe quotes upfront to ensure lightning-fast execution and
-    prevents 502 Bad Gateway proxy timeouts.
+    Pre-warms only the needed historical window upfront for fast, timeout-safe execution.
     """
     import time
-    from concurrent.futures import ThreadPoolExecutor
-    from modules.momentum_smallcases.momentum_smallcases_calculator import (
-        fetch_stock_daily_series,
-        save_price_cache,
-    )
+    from modules.momentum_smallcases.momentum_smallcases_calculator import save_price_cache
 
     data = load_user_momentum_smallcases(username)
     strategies = data.get("strategies", [])
@@ -1309,6 +1328,7 @@ def run_strategy_all_rebalances(strategy_id, stepup_per_rebalance=0.0, up_to_dat
         else:
             trim_existing_eff = bool(t_trim)
 
+    today_d = now_ist().date()
     if up_to_date:
         if isinstance(up_to_date, str):
             cutoff_d = datetime.strptime(up_to_date[:10], "%Y-%m-%d").date()
@@ -1317,42 +1337,45 @@ def run_strategy_all_rebalances(strategy_id, stepup_per_rebalance=0.0, up_to_dat
         else:
             cutoff_d = up_to_date
     else:
-        cutoff_d = date.today()
+        cutoff_d = today_d
 
-    today_d = date.today()
     if cutoff_d > today_d:
         raise ValueError(
             f"Cannot execute rebalance for future date ({cutoff_d.strftime('%d/%m/%Y')}). "
             f"Cutoff date cannot be in the future (today is {today_d.strftime('%d/%m/%Y')})."
         )
 
-    # 0. Pre-warm daily quotes in parallel for all index constituents & current holdings
+    # 0. Pre-warm daily quotes for [earliest needed date - 450d .. cutoff_d]
     constituents = get_strategy_index_constituents(
         target["index_id"],
         target.get("index_type", "manual"),
         username=username
     )
-    symbols_to_warm = set()
-    for c in (constituents or []):
-        if isinstance(c, dict) and c.get("symbol"):
-            symbols_to_warm.add(c["symbol"])
-        elif isinstance(c, str):
-            symbols_to_warm.add(c)
-    for h in target.get("holdings", []):
-        if isinstance(h, dict) and h.get("symbol"):
-            symbols_to_warm.add(h["symbol"])
-
+    symbols_to_warm = _extract_strategy_symbols(target, constituents)
     if symbols_to_warm:
-        logger.info(f"Pre-warming {len(symbols_to_warm)} universe stock quotes for batch rebalance...")
-        worker_count = min(24, max(4, len(symbols_to_warm)))
-        with ThreadPoolExecutor(max_workers=worker_count) as pool:
-            list(pool.map(lambda s: fetch_stock_daily_series(s), symbols_to_warm))
-        save_price_cache()
+        base_d = cutoff_d
+        try:
+            if target.get("status") == "DRAFT" or not target.get("runs"):
+                base_d = datetime.strptime(target["start_date"][:10], "%Y-%m-%d").date()
+            elif target.get("next_rebalance_date"):
+                base_d = datetime.strptime(target["next_rebalance_date"][:10], "%Y-%m-%d").date()
+        except Exception:
+            base_d = cutoff_d
+        win_min = (base_d - timedelta(days=450)).isoformat()
+        win_max = cutoff_d.isoformat()
+        logger.info(f"Pre-warming {len(symbols_to_warm)} universe stock quotes ({win_min} to {win_max}) for batch rebalance...")
+        _prewarm_symbols_for_window(
+            symbols_to_warm,
+            min_date_str=win_min,
+            max_date_str=win_max,
+            cutoff_date=cutoff_d,
+            save_cache=True
+        )
 
     init_executed = False
     rebalances_executed = 0
     batch_start_time = time.time()
-    max_batch_seconds = 22.0  # Safe threshold well below typical 30s/60s reverse proxy timeouts
+    max_batch_seconds = 22.0  # Guard synchronous HTTP calls below reverse proxy timeout
 
     # 1. Execute Init if DRAFT or no runs
     if target.get("status") == "DRAFT" or not target.get("runs"):
@@ -1363,7 +1386,7 @@ def run_strategy_all_rebalances(strategy_id, stepup_per_rebalance=0.0, up_to_dat
         init_executed = True
 
     # 2. Iteratively execute all due rebalances up to cutoff_d
-    max_rebal_runs = 120  # Safeguard: max 10 years of monthly rebalances
+    max_rebal_runs = 150
     last_processed_date = None
     reached_time_limit = False
 
@@ -1378,8 +1401,7 @@ def run_strategy_all_rebalances(strategy_id, stepup_per_rebalance=0.0, up_to_dat
             logger.warning(f"Rebalance date did not advance: {rebal_d} <= {last_processed_date}")
             break
 
-        # Time threshold guard to prevent proxy 502/504 timeout
-        if rebalances_executed > 0 and (time.time() - batch_start_time) > max_batch_seconds:
+        if enforce_time_limit and rebalances_executed > 0 and (time.time() - batch_start_time) > max_batch_seconds:
             logger.info(f"Batch time limit ({max_batch_seconds}s) reached after {rebalances_executed} rebalances; returning cleanly.")
             reached_time_limit = True
             break
@@ -1394,6 +1416,14 @@ def run_strategy_all_rebalances(strategy_id, stepup_per_rebalance=0.0, up_to_dat
             )
             rebalances_executed += 1
             last_processed_date = rebal_d
+        except ValueError as ve:
+            # Stop cleanly if holiday adjustment pushed next rebalance beyond today
+            if (rebalances_executed > 0 or init_executed) and "future date" in str(ve).lower():
+                break
+            err_msg = f"Completed {'Init and ' if init_executed else ''}{rebalances_executed} rebalance(s), but stopped on {rebal_d}: {str(ve)}"
+            if rebalances_executed > 0 or init_executed:
+                raise RuntimeError(err_msg)
+            raise
         except Exception as e:
             logger.error(f"Error during batch rebalance on {rebal_d}: {e}", exc_info=True)
             err_msg = f"Completed {'Init and ' if init_executed else ''}{rebalances_executed} rebalance(s), but stopped on {rebal_d}: {str(e)}"
@@ -1749,8 +1779,8 @@ _JOBS_LOCK = threading.Lock()
 _JOBS_FILE = os.path.join(_DATA_DIR, 'user_data', 'momentum_execution_jobs.json')
 
 
-def _load_jobs_from_disk_locked():
-    """Loads execution jobs from disk into memory, marking any zombie RUNNING jobs as failed."""
+def _load_jobs_from_disk_locked(mark_stale_running=False):
+    """Loads execution jobs from disk into memory without clobbering active jobs in peer workers."""
     global _EXECUTION_JOBS
     if not os.path.exists(_JOBS_FILE):
         return
@@ -1758,33 +1788,56 @@ def _load_jobs_from_disk_locked():
         with open(_JOBS_FILE, 'r', encoding='utf-8') as f:
             data = json.load(f)
             if isinstance(data, dict):
+                current_pid = os.getpid()
                 for k, v in data.items():
-                    if isinstance(v, dict):
-                        # If a job was saved as RUNNING before the process restart, its thread died
-                        if v.get("status") == "RUNNING":
-                            v["status"] = "FAILED"
-                            v["error"] = "Execution job was interrupted by server restart. Please re-trigger the rebalance."
-                        _EXECUTION_JOBS[k] = v
+                    if not isinstance(v, dict):
+                        continue
+                    # Preserve full in-memory result if this worker already owns it
+                    existing = _EXECUTION_JOBS.get(k)
+                    if existing and existing.get("pid") == current_pid and existing.get("status") == "RUNNING":
+                        continue
+                    # Only mark orphan RUNNING jobs as FAILED on cold startup
+                    if mark_stale_running and v.get("status") == "RUNNING":
+                        v["status"] = "FAILED"
+                        v["error"] = "Execution job was interrupted by server restart. Please re-trigger the rebalance."
+                    _EXECUTION_JOBS[k] = v
     except Exception as e:
         logger.warning(f"Error loading momentum execution jobs from disk: {e}")
 
 
 def _save_jobs_to_disk_locked():
-    """Flushes execution jobs to disk atomically."""
+    """Flushes lightweight execution job state to disk atomically (no giant result blobs)."""
     try:
         os.makedirs(os.path.dirname(_JOBS_FILE), exist_ok=True)
-        tmp = f"{_JOBS_FILE}.tmp"
+        compact_jobs = {}
+        for k, v in list(_EXECUTION_JOBS.items())[-25:]:
+            if not isinstance(v, dict):
+                continue
+            compact_jobs[k] = {
+                "id": v.get("id"),
+                "job_type": v.get("job_type"),
+                "strategy_id": v.get("strategy_id"),
+                "username": v.get("username"),
+                "pid": v.get("pid"),
+                "status": v.get("status"),
+                "progress": v.get("progress"),
+                "started_at": v.get("started_at"),
+                "completed_at": v.get("completed_at"),
+                "runs_count": v.get("runs_count"),
+                "error": v.get("error"),
+            }
+        tmp = f"{_JOBS_FILE}.tmp.{os.getpid()}"
         with open(tmp, 'w', encoding='utf-8') as f:
-            json.dump(_EXECUTION_JOBS, f, indent=2, ensure_ascii=False)
+            json.dump(compact_jobs, f, indent=2, ensure_ascii=False)
         os.replace(tmp, _JOBS_FILE)
     except Exception as e:
         logger.warning(f"Error saving momentum execution jobs to disk: {e}")
 
 
-# Initialize jobs from disk on module import
+# Initialize jobs from disk on module import (cold startup cleanup only)
 try:
     with _JOBS_LOCK:
-        _load_jobs_from_disk_locked()
+        _load_jobs_from_disk_locked(mark_stale_running=True)
 except Exception:
     pass
 
@@ -1793,24 +1846,27 @@ def start_async_execution_job(job_type, strategy_id, username=None, **kwargs):
     """
     Launches an execution job in a background thread and returns immediately with a unique job_id.
     Prevents 502 Bad Gateway timeouts caused by long calculations exceeding proxy limits (e.g. 30s).
-    Persists job state to disk so server restarts don't result in unhandled 'Job not found' errors.
+    Persists compact job state to disk so multi-worker polling and restarts work seamlessly.
     """
     job_id = f"job_{uuid.uuid4().hex[:12]}"
+    owner_pid = os.getpid()
     with _JOBS_LOCK:
-        # Prune old completed jobs if dictionary grows
-        if len(_EXECUTION_JOBS) > 100:
+        if len(_EXECUTION_JOBS) > 25:
             completed_keys = [k for k, v in _EXECUTION_JOBS.items() if v.get("status") in ("COMPLETED", "FAILED")]
-            for k in completed_keys[:50]:
+            for k in completed_keys[:-10]:
                 _EXECUTION_JOBS.pop(k, None)
 
         _EXECUTION_JOBS[job_id] = {
             "id": job_id,
             "job_type": job_type,  # "INIT", "REBALANCE", "RUN_ALL"
             "strategy_id": strategy_id,
+            "username": username,
+            "pid": owner_pid,
             "status": "RUNNING",
             "progress": "Starting execution...",
             "started_at": datetime.now().isoformat(),
             "completed_at": None,
+            "runs_count": None,
             "result": None,
             "error": None
         }
@@ -1829,14 +1885,25 @@ def start_async_execution_job(job_type, strategy_id, username=None, **kwargs):
                 stepup = kwargs.get("stepup_per_rebalance", 0.0)
                 up_to = kwargs.get("up_to_date")
                 trim_override = kwargs.get("trim_existing")
-                res = run_strategy_all_rebalances(strategy_id, stepup_per_rebalance=stepup, up_to_date=up_to, username=username, trim_existing=trim_override)
+                res = run_strategy_all_rebalances(
+                    strategy_id,
+                    stepup_per_rebalance=stepup,
+                    up_to_date=up_to,
+                    username=username,
+                    trim_existing=trim_override,
+                    enforce_time_limit=False
+                )
             else:
                 raise ValueError(f"Unknown job type: {job_type}")
+
+            res_strat = res.get("strategy") if isinstance(res, dict) and isinstance(res.get("strategy"), dict) else res
+            runs_cnt = len(res_strat.get("runs") or []) if isinstance(res_strat, dict) else None
 
             with _JOBS_LOCK:
                 if job_id in _EXECUTION_JOBS:
                     _EXECUTION_JOBS[job_id]["status"] = "COMPLETED"
                     _EXECUTION_JOBS[job_id]["completed_at"] = datetime.now().isoformat()
+                    _EXECUTION_JOBS[job_id]["runs_count"] = runs_cnt
                     _EXECUTION_JOBS[job_id]["result"] = res
                     _save_jobs_to_disk_locked()
             logger.info(f"Async job {job_id} ({job_type}) completed successfully")
@@ -1855,12 +1922,12 @@ def start_async_execution_job(job_type, strategy_id, username=None, **kwargs):
 
 
 def get_execution_job_status(job_id):
-    """Retrieves current status and result for an async execution job, checking disk if not in memory."""
+    """Retrieves current status and result for an async execution job, safely syncing across worker processes."""
+    current_pid = os.getpid()
     with _JOBS_LOCK:
         job = _EXECUTION_JOBS.get(job_id)
-        if not job:
-            # Recheck disk in case another worker process wrote the job
-            _load_jobs_from_disk_locked()
+        if not job or (job.get("status") == "RUNNING" and job.get("pid") != current_pid):
+            _load_jobs_from_disk_locked(mark_stale_running=False)
             job = _EXECUTION_JOBS.get(job_id)
         if not job:
             return None

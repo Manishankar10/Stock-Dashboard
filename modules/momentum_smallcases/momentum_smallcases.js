@@ -42,6 +42,23 @@
         'mscFloatingDocksContainer'
     ];
 
+    function getTodayISTStr() {
+        try {
+            const fmt = new Intl.DateTimeFormat('en-CA', {
+                timeZone: 'Asia/Kolkata',
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+            }).format(new Date());
+            if (/^\d{4}-\d{2}-\d{2}$/.test(fmt)) return fmt;
+        } catch (_) {}
+        const d = new Date();
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+    }
+
     function ensureModalsAttachedToBody() {
         if (typeof document === 'undefined' || !document.body) return;
         MSC_MODAL_ELEMENT_IDS.forEach(id => {
@@ -69,7 +86,7 @@
         }
 
         // Enforce max date on start date pickers to prevent selecting future dates
-        const todayStr = new Date().toISOString().slice(0, 10);
+        const todayStr = getTodayISTStr();
         const sDate = document.getElementById('stratStartDateInput');
         if (sDate) sDate.max = todayStr;
         const cDate = document.getElementById('mscCompStartDate');
@@ -178,28 +195,33 @@
     }
 
     // Polls background execution job until completion (immune to reverse proxy / Gunicorn 502/504 timeouts)
-    async function pollJobUntilComplete(jobId, statusTitle = 'Executing...', strategyId = null) {
+    async function pollJobUntilComplete(jobId, statusTitle = 'Executing...', strategyId = null, expectedMinRuns = null) {
         const startTime = Date.now();
         const maxPollMs = 300000; // 5 minute max safety threshold
-        const pollInterval = 1200; // 1.2s poll interval
+        const pollInterval = 1100; // 1.1s poll interval
         let consecutiveNotFound = 0;
 
         while (Date.now() - startTime < maxPollMs) {
             await new Promise(r => setTimeout(r, pollInterval));
             let res = null;
             try {
-                const queryStr = strategyId ? `?strategy_id=${encodeURIComponent(strategyId)}` : '';
+                const params = new URLSearchParams();
+                if (strategyId) params.set('strategy_id', strategyId);
+                if (expectedMinRuns != null) params.set('min_runs', String(expectedMinRuns));
+                const queryStr = params.toString() ? `?${params.toString()}` : '';
                 res = await safeFetchJson(`/api/momentum-smallcases/jobs/${encodeURIComponent(jobId)}${queryStr}`);
             } catch (pollErr) {
                 const errMsg = String(pollErr.message || '');
                 if (pollErr.status === 404 || errMsg.includes('Job not found')) {
                     consecutiveNotFound++;
                     if (consecutiveNotFound >= 3) {
-                        // Job was not found 3 times in a row. Check if strategy state has already updated in DB
+                        // Job was not found 3 times in a row. Check if strategy state has already reached expectedMinRuns
                         if (strategyId) {
                             try {
                                 const checkStrat = await safeFetchJson(`/api/momentum-smallcases/strategies/${encodeURIComponent(strategyId)}`);
-                                if (checkStrat && checkStrat.strategy && (checkStrat.strategy.runs || []).length > 0) {
+                                const runsCount = (checkStrat && checkStrat.strategy && Array.isArray(checkStrat.strategy.runs)) ? checkStrat.strategy.runs.length : 0;
+                                const metTarget = expectedMinRuns != null ? (runsCount >= expectedMinRuns) : (runsCount > 0);
+                                if (metTarget) {
                                     console.info('Job not in memory but strategy has updated runs. Resolving successfully.');
                                     return { success: true, strategy: checkStrat.strategy, message: 'Execution completed.' };
                                 }
@@ -226,6 +248,22 @@
             }
         }
         throw new Error('Calculation timed out after 5 minutes. Please refresh the page to view current progress.');
+    }
+
+    async function extractOrReloadStrategy(payload, strategyId) {
+        if (payload && payload.strategy && payload.strategy.id) {
+            return payload.strategy;
+        }
+        if (payload && payload.id && Array.isArray(payload.runs)) {
+            return payload;
+        }
+        if (strategyId) {
+            const fetched = await safeFetchJson(`/api/momentum-smallcases/strategies/${encodeURIComponent(strategyId)}`);
+            if (fetched && fetched.strategy) {
+                return fetched.strategy;
+            }
+        }
+        return null;
     }
 
     // =========================================================================
@@ -1094,7 +1132,7 @@
                 </div>
             `;
         } else {
-            const todayStr = new Date().toISOString().substring(0, 10);
+            const todayStr = getTodayISTStr();
             const isNextRebalFuture = nextRebalDate && nextRebalDate.substring(0, 10) > todayStr;
             const hasHoldings = Array.isArray(currentStrategy?.holdings) && currentStrategy.holdings.length > 0;
             const withdrawBtnHtml = hasHoldings ? `
@@ -1877,7 +1915,7 @@
             }
 
             if (data.async && data.job_id) {
-                await pollJobUntilComplete(data.job_id, 'Executing Initial Allocation...', strategyId);
+                await pollJobUntilComplete(data.job_id, 'Executing Initial Allocation...', strategyId, 1);
             }
 
             alertToast('Init execution completed successfully!', 'success');
@@ -1925,7 +1963,7 @@
         ensureModalsAttachedToBody();
 
         const nextRebalStr = (currentStrategy.next_rebalance_date || '').substring(0, 10);
-        const todayStr = new Date().toISOString().substring(0, 10);
+        const todayStr = getTodayISTStr();
         if (nextRebalStr && nextRebalStr > todayStr) {
             alertToast(`Cannot execute rebalance for future date (${formatDateDisplay(nextRebalStr)}). Market data is not available for future dates (today is ${formatDateDisplay(todayStr)}).`, 'error');
             return;
@@ -1969,7 +2007,7 @@
         if (!currentStrategy || isSubmitting) return;
 
         const nextRebalStr = (currentStrategy.next_rebalance_date || '').substring(0, 10);
-        const todayStr = new Date().toISOString().substring(0, 10);
+        const todayStr = getTodayISTStr();
         if (nextRebalStr && nextRebalStr > todayStr) {
             alertToast(`Cannot execute rebalance for future date (${formatDateDisplay(nextRebalStr)}). Market data is not available for future dates (today is ${formatDateDisplay(todayStr)}).`, 'error');
             return;
@@ -2016,7 +2054,8 @@
             }
 
             if (data.async && data.job_id) {
-                await pollJobUntilComplete(data.job_id, 'Executing Rebalance...', currentStrategy.id);
+                const prevRunsLen = Array.isArray(currentStrategy.runs) ? currentStrategy.runs.length : 0;
+                await pollJobUntilComplete(data.job_id, 'Executing Rebalance...', currentStrategy.id, prevRunsLen + 1);
             }
 
             closeRunRebalanceModal();
@@ -2045,7 +2084,14 @@
         setSmallcaseModalLoader('runAllRebalanceModal', false);
         let strat = currentStrategy;
         if (strategyId) {
-            strat = (strategiesCache || []).find(s => s.id === strategyId) || currentStrategy;
+            const cached = (strategiesCache || []).find(s => s.id === strategyId);
+            if (currentStrategy && currentStrategy.id === strategyId) {
+                const curLen = (currentStrategy.runs || []).length;
+                const cacheLen = (cached && Array.isArray(cached.runs)) ? cached.runs.length : -1;
+                strat = (cacheLen > curLen) ? cached : currentStrategy;
+            } else {
+                strat = cached || currentStrategy;
+            }
             if (strat) currentStrategy = strat;
         }
 
@@ -2055,7 +2101,7 @@
         }
 
         const isDraft = currentStrategy.status === 'DRAFT' || !currentStrategy.runs || currentStrategy.runs.length === 0;
-        const todayStr = new Date().toISOString().substring(0, 10);
+        const todayStr = getTodayISTStr();
         const nextRebalStr = (currentStrategy.next_rebalance_date || '').substring(0, 10);
         if (!isDraft && nextRebalStr && nextRebalStr > todayStr) {
             alertToast(`Cannot execute rebalance for future date (${formatDateDisplay(nextRebalStr)}). Smallcase is already up to date up to today (${formatDateDisplay(todayStr)}).`, 'error');
@@ -2131,7 +2177,7 @@
         const trimVal = (document.getElementById('runAllTrimSelect')?.value === 'no') ? false : true;
 
         const cutoffVal = document.getElementById('runAllCutoffDateInput')?.value || '';
-        const todayStr = new Date().toISOString().substring(0, 10);
+        const todayStr = getTodayISTStr();
         if (cutoffVal && cutoffVal > todayStr) {
             alertToast(`Cannot execute rebalance for future date (${formatDateDisplay(cutoffVal)}). Cutoff date cannot be in the future (today is ${formatDateDisplay(todayStr)}).`, 'error');
             return;
@@ -2146,7 +2192,7 @@
         }
 
         const btn = document.getElementById('runAllConfirmBtn');
-        const origText = btn ? btn.innerText : '⚡ Run All Now';
+        const origHtml = btn ? btn.innerHTML : '⚡ Run All Now';
         if (btn) {
             btn.disabled = true;
             btn.innerHTML = '<span>⏳</span> Executing Runs...';
@@ -2156,7 +2202,7 @@
         // Keep modal open and display brand loader inside it
         setSmallcaseModalLoader('runAllRebalanceModal', true, {
             title: 'Starting Rebalance All (One-by-One Engine)...',
-            badge: 'Safe Sequential Runner',
+            badge: 'Safe Async Sequential Runner',
             subtitle: 'Preparing sequential schedule execution...'
         });
 
@@ -2165,7 +2211,7 @@
         let strat = currentStrategy;
 
         try {
-            // STEP 1: Execute Init if DRAFT
+            // STEP 1: Execute Init asynchronously if DRAFT (prevents 30s reverse proxy 502 timeouts)
             if (strat.status === 'DRAFT' || !strat.runs || strat.runs.length === 0) {
                 const startStr = (strat.start_date || '').substring(0, 10);
                 if (startStr > effectiveCutoff) {
@@ -2178,7 +2224,7 @@
                     subtitle: `Allocating initial capital ₹${formatCurrency(strat.amount_to_invest)} on ${formatDateDisplay(strat.start_date)}...`
                 });
 
-                const initData = await safeFetchJson(`/api/momentum-smallcases/strategies/${encodeURIComponent(strat.id)}/run-init?sync=1`, {
+                const initData = await safeFetchJson(`/api/momentum-smallcases/strategies/${encodeURIComponent(strat.id)}/run-init`, {
                     method: 'POST'
                 });
 
@@ -2186,12 +2232,21 @@
                     throw new Error((initData && initData.error) || 'Failed to execute Init');
                 }
 
-                strat = initData.strategy || strat;
+                let initResult = initData;
+                if (initData.async && initData.job_id) {
+                    initResult = await pollJobUntilComplete(initData.job_id, 'Executing Initial Allocation (Init)...', strat.id, 1);
+                }
+
+                const updatedInitStrat = await extractOrReloadStrategy(initResult, strat.id);
+                if (!updatedInitStrat) {
+                    throw new Error('Init completed but could not load updated strategy state.');
+                }
+                strat = updatedInitStrat;
                 currentStrategy = strat;
                 initExecuted = true;
             }
 
-            // STEP 2: Sequentially execute pending monthly rebalance schedules one by one
+            // STEP 2: Sequentially execute pending monthly rebalance schedules via async jobs
             const maxSchedules = 150; // Guard against infinite loop (12+ years)
             let lastProcessedDate = null;
 
@@ -2208,26 +2263,51 @@
                 }
 
                 const schedNum = rebalancesExecuted + 1;
+                const prevRunsLen = Array.isArray(strat.runs) ? strat.runs.length : 0;
                 setSmallcaseModalLoader('runAllRebalanceModal', true, {
                     title: `Executing Rebalance #${schedNum}...`,
                     badge: `Schedule ${schedNum}`,
                     subtitle: `Running rebalance for ${formatDateDisplay(schedRebalStr)}${stepupVal > 0 ? ' with step-up ₹' + formatCurrency(stepupVal) : ''}...`
                 });
 
-                const rebalData = await safeFetchJson(`/api/momentum-smallcases/strategies/${encodeURIComponent(strat.id)}/run-rebalance?sync=1`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        stepup_amount: stepupVal,
-                        trim_existing: trimVal
-                    })
-                });
+                let rebalResult;
+                try {
+                    const rebalData = await safeFetchJson(`/api/momentum-smallcases/strategies/${encodeURIComponent(strat.id)}/run-rebalance`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            stepup_amount: stepupVal,
+                            trim_existing: trimVal
+                        })
+                    });
 
-                if (!rebalData || !rebalData.success) {
-                    throw new Error((rebalData && rebalData.error) || `Failed during rebalance execution on ${formatDateDisplay(schedRebalStr)}`);
+                    if (!rebalData || !rebalData.success) {
+                        throw new Error((rebalData && rebalData.error) || `Failed during rebalance execution on ${formatDateDisplay(schedRebalStr)}`);
+                    }
+
+                    rebalResult = rebalData;
+                    if (rebalData.async && rebalData.job_id) {
+                        rebalResult = await pollJobUntilComplete(
+                            rebalData.job_id,
+                            `Executing Rebalance #${schedNum}...`,
+                            strat.id,
+                            prevRunsLen + 1
+                        );
+                    }
+                } catch (stepErr) {
+                    const msgLow = String(stepErr && stepErr.message || '').toLowerCase();
+                    // Holiday-adjusted next rebalance fell after today cleanly ends remaining schedules
+                    if ((initExecuted || rebalancesExecuted > 0) && msgLow.includes('future date')) {
+                        break;
+                    }
+                    throw stepErr;
                 }
 
-                strat = rebalData.strategy || strat;
+                const updatedRebalStrat = await extractOrReloadStrategy(rebalResult, strat.id);
+                if (!updatedRebalStrat) {
+                    throw new Error(`Rebalance #${schedNum} completed but could not load updated strategy state.`);
+                }
+                strat = updatedRebalStrat;
                 currentStrategy = strat;
                 lastProcessedDate = schedRebalStr;
                 rebalancesExecuted++;
@@ -2267,8 +2347,9 @@
             setSmallcaseModalLoader('runAllRebalanceModal', false);
             hideSmallcaseGlobalLoader();
             if (btn) {
+                delete btn.dataset.cdWasDisabled;
                 btn.disabled = false;
-                btn.innerText = origText;
+                btn.innerHTML = origHtml;
             }
         }
     }

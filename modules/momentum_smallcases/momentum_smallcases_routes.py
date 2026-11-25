@@ -514,15 +514,29 @@ def run_all_strategy_api(strategy_id):
 
 @momentum_smallcases_bp.route("/api/momentum-smallcases/jobs/<job_id>", methods=["GET"])
 def get_job_status_api(job_id):
-    """Returns execution status for an async momentum job, with strategy status fallback."""
+    """Returns execution status for an async momentum job, safely reloading across workers."""
+    user = session.get("username") or "admin"
     job = get_execution_job_status(job_id)
-    if not job:
-        # Graceful fallback: If strategy_id is provided, check if strategy is already saved / has runs
-        strategy_id = request.args.get("strategy_id")
-        user = session.get("username") or "admin"
-        if strategy_id:
-            strat = get_user_strategy(strategy_id, username=user)
-            if strat and strat.get("runs"):
+    if job:
+        # Cross-worker poll: attach fresh strategy from storage if completed in peer worker
+        if job.get("status") == "COMPLETED" and job.get("result") is None and job.get("strategy_id"):
+            strat = get_user_strategy(job["strategy_id"], username=job.get("username") or user)
+            if strat:
+                job["result"] = {
+                    "success": True,
+                    "strategy": strat,
+                    "message": "Execution completed."
+                }
+        return jsonify({"success": True, "job": job})
+
+    strategy_id = request.args.get("strategy_id")
+    min_runs = request.args.get("min_runs", type=int)
+    if strategy_id:
+        strat = get_user_strategy(strategy_id, username=user)
+        if strat:
+            runs_len = len(strat.get("runs") or [])
+            completed_match = (runs_len >= min_runs) if min_runs is not None else (runs_len > 0)
+            if completed_match:
                 return jsonify({
                     "success": True,
                     "job": {
@@ -536,8 +550,7 @@ def get_job_status_api(job_id):
                         }
                     }
                 })
-        return jsonify({"success": False, "error": "Job not found"}), 404
-    return jsonify({"success": True, "job": job})
+    return jsonify({"success": False, "error": "Job not found"}), 404
 
 
 @momentum_smallcases_bp.route("/api/momentum-smallcases/strategies/<strategy_id>/performance-graph", methods=["POST"])

@@ -107,9 +107,30 @@ def save_price_cache():
 # DATABASE COLLECTION: stock_closing_prices (PRIMARY PRICE SOURCE WITH CACHE)
 # ==============================================================================
 _db_prices_cache = {}
+_db_prices_range_cache = {}
 _db_cache_lock = threading.Lock()
 _earliest_price_cache = {}
 _earliest_price_lock = threading.Lock()
+
+
+def _is_range_covered(cached_range, req_min, req_max):
+    """Returns True if cached (min_date, max_date) covers [req_min, req_max]."""
+    if cached_range is None:
+        return False
+    c_min, c_max = cached_range
+    if c_min is None and c_max is None:
+        return True
+    if req_min is None:
+        if c_min is not None:
+            return False
+    elif c_min is not None and str(req_min)[:10] < c_min:
+        return False
+    if req_max is None:
+        if c_max is not None:
+            return False
+    elif c_max is not None and str(req_max)[:10] > c_max:
+        return False
+    return True
 
 
 def get_stock_earliest_price_date(symbol):
@@ -164,22 +185,33 @@ def get_stock_closing_prices_from_db(symbol, target_cutoff_str=None):
     alias_map = {'TATAMOTORS': 'TMPV', 'HDFC': 'HDFCBANK'}
     fetch_sym = alias_map.get(clean_sym, clean_sym)
 
-    # 1. Check in-memory cache
+    # 1. Check in-memory cache (verify cached range covers lookback + target_cutoff_str)
     with _db_cache_lock:
         if fetch_sym in _db_prices_cache:
-            series = _db_prices_cache[fetch_sym]
-            if series and len(series) > 0:
-                if not target_cutoff_str:
-                    return series
-                # Binary search for rightmost index where date <= target_cutoff_str
-                lo, hi = 0, len(series)
-                while lo < hi:
-                    mid = (lo + hi) // 2
-                    if series[mid][0] <= target_cutoff_str:
-                        lo = mid + 1
-                    else:
-                        hi = mid
-                return series[:lo]
+            cached_range = _db_prices_range_cache.get(fetch_sym)
+            if target_cutoff_str:
+                try:
+                    c_dt = datetime.strptime(target_cutoff_str[:10], "%Y-%m-%d").date()
+                    lb_min = (c_dt - timedelta(days=400)).isoformat()
+                except Exception:
+                    lb_min = target_cutoff_str[:10]
+                range_ok = (cached_range is None) or _is_range_covered(cached_range, lb_min, target_cutoff_str[:10])
+            else:
+                range_ok = (cached_range is None) or (cached_range == (None, None))
+            if range_ok:
+                series = _db_prices_cache[fetch_sym]
+                if series and len(series) > 0:
+                    if not target_cutoff_str:
+                        return series
+                    # Binary search for rightmost index where date <= target_cutoff_str
+                    lo, hi = 0, len(series)
+                    while lo < hi:
+                        mid = (lo + hi) // 2
+                        if series[mid][0] <= target_cutoff_str:
+                            lo = mid + 1
+                        else:
+                            hi = mid
+                    return series[:lo]
 
     # 2. Query database collection stock_closing_prices
     try:
@@ -208,6 +240,7 @@ def get_stock_closing_prices_from_db(symbol, target_cutoff_str=None):
             if series:
                 with _db_cache_lock:
                     _db_prices_cache[fetch_sym] = series
+                    _db_prices_range_cache[fetch_sym] = (None, target_cutoff_str[:10] if target_cutoff_str else None)
 
                 try:
                     first_d = datetime.strptime(series[0][0][:10], "%Y-%m-%d").date()
@@ -236,6 +269,7 @@ def clear_db_prices_cache():
     """Clears temporary in-memory prices cache to ensure zero server-side memory retention."""
     with _db_cache_lock:
         _db_prices_cache.clear()
+        _db_prices_range_cache.clear()
     with _earliest_price_lock:
         _earliest_price_cache.clear()
 
@@ -249,14 +283,25 @@ def prewarm_stock_prices_cache(symbols=None, min_date=None, max_date=None):
     try:
         from db_store import load_stock_closing_prices_db
         from modules.stock_closing_prices.stock_closing_prices_provider import compute_stock_monthly_prices
+        req_min = str(min_date)[:10] if min_date else None
+        req_max = str(max_date)[:10] if max_date else None
         target_syms = None
         if symbols:
             with _db_cache_lock:
                 target_syms = [
                     s.strip().upper().replace('.NS', '').replace('.BO', '')
                     for s in symbols
-                    if s and s.strip().upper().replace('.NS', '').replace('.BO', '') not in _db_prices_cache
+                    if s and (
+                        s.strip().upper().replace('.NS', '').replace('.BO', '') not in _db_prices_cache
+                        or not _is_range_covered(
+                            _db_prices_range_cache.get(s.strip().upper().replace('.NS', '').replace('.BO', '')),
+                            req_min,
+                            req_max
+                        )
+                    )
                 ]
+                # Preserve order while deduplicating
+                target_syms = list(dict.fromkeys(target_syms))
                 if not target_syms:
                     return len(_db_prices_cache)
 
@@ -301,7 +346,21 @@ def prewarm_stock_prices_cache(symbols=None, min_date=None, max_date=None):
 
                     series = [(d, series_dict[d]) for d in sorted(series_dict.keys())]
                     if series:
+                        prev_range = _db_prices_range_cache.get(clean_s)
+                        if clean_s in _db_prices_cache and _db_prices_cache[clean_s]:
+                            merged_dict = dict(_db_prices_cache[clean_s])
+                            merged_dict.update(series_dict)
+                            series = [(d, merged_dict[d]) for d in sorted(merged_dict.keys())]
                         _db_prices_cache[clean_s] = series
+                        if prev_range == (None, None) or (req_min is None and req_max is None):
+                            _db_prices_range_cache[clean_s] = (None, None)
+                        elif prev_range is None:
+                            _db_prices_range_cache[clean_s] = (req_min, req_max)
+                        else:
+                            p_min, p_max = prev_range
+                            new_min = None if (p_min is None or req_min is None) else min(p_min, req_min)
+                            new_max = None if (p_max is None or req_max is None) else max(p_max, req_max)
+                            _db_prices_range_cache[clean_s] = (new_min, new_max)
                         try:
                             # Prefer actual earliest stored date in doc if available
                             s_date = doc.get("start_date") or doc.get("min_date")
@@ -501,6 +560,7 @@ def fetch_stock_daily_series(symbol, target_cutoff_date=None, force_refresh=Fals
                                 }
                             with _db_cache_lock:
                                 _db_prices_cache[fetch_sym] = series
+                                _db_prices_range_cache[fetch_sym] = (series[0][0][:10], series[-1][0][:10])
                             break
                     elif r.status_code in (404, 400):
                         break
@@ -866,8 +926,19 @@ def rank_and_evaluate_universe(stock_items, target_date, formula_str, no_of_stoc
             logger.warning(f"Error evaluating {sym}: {e}")
         return (sym, None)
 
-    # Pre-warm DB stock closing prices into memory cache for instant <0.01ms evaluations
-    prewarm_stock_prices_cache(eligible_symbols)
+    # Pre-warm DB stock closing prices into memory cache for requested target_date window
+    if target_date:
+        if isinstance(target_date, str):
+            td_obj = datetime.strptime(target_date[:10], "%Y-%m-%d").date()
+        elif isinstance(target_date, datetime):
+            td_obj = target_date.date()
+        else:
+            td_obj = target_date
+        win_min = (td_obj - timedelta(days=450)).isoformat()
+        win_max = td_obj.isoformat()
+        prewarm_stock_prices_cache(eligible_symbols, min_date=win_min, max_date=win_max)
+    else:
+        prewarm_stock_prices_cache(eligible_symbols)
 
     # Fetch concurrently with safe worker pool (cap to 6 to stay lightweight on memory)
     worker_count = min(6, max(2, len(eligible_symbols)))
