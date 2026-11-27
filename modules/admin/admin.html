@@ -1997,16 +1997,16 @@
                                         <div>
                                             <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
                                                 <span style="font-weight: 600; color: var(--text-primary);">Stock Closing Prices</span>
-                                                <button type="button" onclick="toggleAdminStockPricesModal(true)" style="background: rgba(14, 165, 233, 0.12); color: #0ea5e9; border: 1px solid rgba(14, 165, 233, 0.25); border-radius: 4px; padding: 2px 7px; font-size: 11px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 3px;">🔍 View 750 Stocks</button>
+                                                <button type="button" onclick="toggleAdminStockPricesModal(true)" style="background: rgba(14, 165, 233, 0.12); color: #0ea5e9; border: 1px solid rgba(14, 165, 233, 0.25); border-radius: 4px; padding: 2px 7px; font-size: 11px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 3px;">🔍 View All Stocks</button>
                                             </div>
                                             <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">
-                                                Daily EOD Closes (2012 / 2013 – Present) • 750 Benchmark Index Constituents (Take only post-market close)
+                                                Daily EOD Closes (2012 / 2013 – Present) • 750 Benchmark Index Constituents + Custom / Exited Tracked Stocks (Post-Market Close)
                                             </div>
                                         </div>
                                     </div>
                                 </td>
                                 <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
-                                    <span id="sync-tbl-count-stock_prices" style="font-weight: 600; font-size: 13px; color: var(--text-primary);">0 Stocks</span>
+                                    <span id="sync-tbl-count-stock_prices" style="font-weight: 600; font-size: 13px; color: var(--text-primary);">0 / 750 Index</span>
                                 </td>
                                 <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
                                     <span id="sync-tbl-last-stock_prices" style="color: var(--text-secondary); font-size: 12px;">Never</span>
@@ -2017,16 +2017,19 @@
                                 <td style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
                                     <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 6px;">
                                         <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                                            <button type="button" id="sync-tbl-btn-stock_prices" class="btn" onclick="triggerAdminStockPricesSync()" style="background: var(--bg-hover); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 6px; padding: 7px 14px; font-size: 12px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;" title="Captures latest daily exchange closing prices for all 750 benchmark stocks">
-                                                🔄 Sync Latest Closing Prices
+                                            <button type="button" id="sync-tbl-btn-stock_prices" class="btn" onclick="triggerAdminStockPricesSync(false, 'index')" style="background: var(--bg-hover); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 6px; padding: 7px 12px; font-size: 12px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;" title="Sync daily closing prices for the 750 official benchmark index constituents">
+                                                🔄 Sync Index Prices
                                             </button>
-                                            <button type="button" id="sync-tbl-btn-monthly-averages" class="btn" onclick="triggerAdminSyncMonthlyAverages()" style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); color: #10b981; border-radius: 6px; padding: 4px 8px; font-size: 11px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;" title="Calculates monthly average prices and monthly returns for all constituent stocks and stores in MongoDB Atlas">
-                                                ⚡ Calc Monthly Averages
+                                            <button type="button" id="sync-tbl-btn-custom_stock_prices" class="btn" onclick="triggerAdminStockPricesSync(false, 'custom')" style="background: rgba(14, 165, 233, 0.1); border: 1px solid rgba(14, 165, 233, 0.3); color: #0ea5e9; border-radius: 6px; padding: 7px 12px; font-size: 12px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;" title="Sync daily closing prices for manually added & exited tracked stocks">
+                                                🧩 Sync Custom Stock Prices
+                                            </button>
+                                            <button type="button" id="sync-tbl-btn-monthly-averages" class="btn" onclick="triggerAdminSyncMonthlyAverages()" style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); color: #10b981; border-radius: 6px; padding: 7px 12px; font-size: 12px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;" title="Calculates monthly average prices and monthly returns for all constituent stocks and stores in MongoDB Atlas">
+                                                ⚡ Calc Monthly Avg
                                             </button>
                                         </div>
-                                        <label for="sync-stock-prices-full-resync" style="display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 500; color: var(--text-secondary); cursor: pointer; user-select: none;" title="When checked, re-syncs full history from Jan 2012. When unchecked, syncs only remaining dates.">
+                                        <label for="sync-stock-prices-full-resync" style="display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 500; color: var(--text-secondary); cursor: pointer; user-select: none;" title="When checked, Sync Index Prices or Sync Custom Stock Prices re-syncs full history from Jan 1st 2012. When unchecked, syncs only remaining dates.">
                                             <input type="checkbox" id="sync-stock-prices-full-resync" style="accent-color: #0ea5e9; width: 13px; height: 13px; cursor: pointer;">
-                                            <span>Start from Jan 2012</span>
+                                            <span>Start from Jan 1st 2012</span>
                                         </label>
                                     </div>
                                 </td>
@@ -3597,22 +3600,29 @@
                         <span>📉</span> Stock Closing Prices (2012 / 2013 – Present)
                     </h3>
                     <p style="margin: 4px 0 0 0; font-size: 12.5px; color: var(--text-secondary);">
-                        750 Benchmark Index Constituent Stocks • Daily EOD Closes (2012 / 2013 – Present)
+                        750 Benchmark Index Constituents + Custom / Exited Tracked Stocks • Daily EOD Closes (2012 / 2013 – Present)
                     </p>
                 </div>
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <button type="button" class="btn" onclick="triggerAdminStockPricesSync()" style="background: var(--bg-hover); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 6px; padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;">
-                        🔄 Sync Pending Closes
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <button type="button" class="btn" onclick="triggerAdminStockPricesSync(false, 'index')" style="background: var(--bg-hover); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 6px; padding: 6px 10px; font-size: 12px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;">
+                        🔄 Sync Index
+                    </button>
+                    <button type="button" class="btn" onclick="triggerAdminStockPricesSync(false, 'custom')" style="background: rgba(14, 165, 233, 0.1); border: 1px solid rgba(14, 165, 233, 0.3); color: #0ea5e9; border-radius: 6px; padding: 6px 10px; font-size: 12px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;">
+                        🧩 Sync Custom
                     </button>
                     <button type="button" class="close-btn" onclick="toggleAdminStockPricesModal(false)" style="background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-secondary);">&times;</button>
                 </div>
             </div>
 
             <!-- Telemetry Cards -->
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 14px; flex-shrink: 0;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin-bottom: 14px; flex-shrink: 0;">
                 <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px 14px;">
-                    <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; font-weight: 600;">Total Stocks</div>
+                    <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; font-weight: 600;">Index Stocks</div>
                     <div id="modal-sp-total-stocks" style="font-size: 20px; font-weight: 800; color: var(--text-primary); margin-top: 2px;">0 / 750</div>
+                </div>
+                <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px 14px;">
+                    <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; font-weight: 600;">Custom Tracked</div>
+                    <div id="modal-sp-custom-stocks" style="font-size: 20px; font-weight: 800; color: #0ea5e9; margin-top: 2px;">0 / 0</div>
                 </div>
                 <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px 14px;">
                     <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; font-weight: 600;">Latest Trading Date</div>
@@ -3620,7 +3630,7 @@
                 </div>
                 <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px 14px;">
                     <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; font-weight: 600;">Pending Updates</div>
-                    <div id="modal-sp-pending-count" style="font-size: 18px; font-weight: 700; color: #ca8a04; margin-top: 2px;">0 Stocks</div>
+                    <div id="modal-sp-pending-count" style="font-size: 15px; font-weight: 700; color: #ca8a04; margin-top: 4px;">0 Stocks</div>
                 </div>
                 <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px 14px;">
                     <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; font-weight: 600;">Market Session</div>
@@ -3630,7 +3640,12 @@
 
             <!-- Search Filter Bar -->
             <div style="display: flex; gap: 10px; margin-bottom: 12px; flex-shrink: 0;">
-                <input type="text" id="modal-sp-search-input" placeholder="🔍 Search by stock symbol or company name (e.g. RELIANCE, TCS, INFY)..." oninput="filterAdminStockPricesModalTable()" style="flex: 1; padding: 8px 14px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary); font-size: 13px;">
+                <input type="text" id="modal-sp-search-input" placeholder="🔍 Search by stock symbol or company name (e.g. RELIANCE, TCS, NETWEB)..." oninput="filterAdminStockPricesModalTable()" style="flex: 1; padding: 8px 14px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary); font-size: 13px;">
+                <select id="modal-sp-scope-filter" onchange="filterAdminStockPricesModalTable()" style="padding: 8px 12px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary); font-size: 12.5px; font-weight: 600;">
+                    <option value="all">All Stocks</option>
+                    <option value="index">750 Index Constituents</option>
+                    <option value="custom">Custom / Exited Stocks</option>
+                </select>
                 <button type="button" onclick="loadAdminStockPricesModalList()" class="btn" style="background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 6px; padding: 8px 14px; font-size: 12.5px; font-weight: 600; cursor: pointer;">Refresh Table</button>
             </div>
 
@@ -4615,6 +4630,16 @@
                     btn.style.opacity = '0.75';
                 }
                 if (key === 'stock_prices') {
+                    const customBtn = document.getElementById('sync-tbl-btn-custom_stock_prices');
+                    if (customBtn) {
+                        customBtn.disabled = true;
+                        customBtn.style.opacity = '0.6';
+                    }
+                    const monthlyBtn = document.getElementById('sync-tbl-btn-monthly-averages');
+                    if (monthlyBtn) {
+                        monthlyBtn.disabled = true;
+                        monthlyBtn.style.opacity = '0.6';
+                    }
                     const fullChk = document.getElementById('sync-stock-prices-full-resync');
                     if (fullChk) fullChk.disabled = true;
                 }
@@ -4631,10 +4656,22 @@
             } else {
                 if (btn) {
                     btn.disabled = false;
-                    btn.innerHTML = (key === 'stock_prices') ? '🔄 Sync Latest Closing Prices' : '⚡ Sync';
+                    btn.innerHTML = (key === 'stock_prices') ? '🔄 Sync Index Prices' : '⚡ Sync';
                     btn.style.opacity = '1';
                 }
                 if (key === 'stock_prices') {
+                    const customBtn = document.getElementById('sync-tbl-btn-custom_stock_prices');
+                    if (customBtn) {
+                        customBtn.disabled = false;
+                        customBtn.innerHTML = '🧩 Sync Custom Stock Prices';
+                        customBtn.style.opacity = '1';
+                    }
+                    const monthlyBtn = document.getElementById('sync-tbl-btn-monthly-averages');
+                    if (monthlyBtn) {
+                        monthlyBtn.disabled = false;
+                        monthlyBtn.innerHTML = '⚡ Calc Monthly Avg';
+                        monthlyBtn.style.opacity = '1';
+                    }
                     const fullChk = document.getElementById('sync-stock-prices-full-resync');
                     if (fullChk) fullChk.disabled = false;
                 }
@@ -7059,6 +7096,8 @@
                 _adminStockPricesData = s;
                 const totalStocks = s.total_stocks || 0;
                 const universe = s.universe_size || 750;
+                const customTotal = s.custom_total_stocks || 0;
+                const customUniverse = s.custom_universe_size || 0;
                 const isSyncing = Boolean(s.is_syncing);
                 const lastSynced = s.last_synced_display || 'Never';
                 const latestDate = s.latest_trading_date || '—';
@@ -7077,7 +7116,7 @@
                         badgeEl.style.color = '#ca8a04';
                         badgeEl.style.borderColor = 'rgba(234, 179, 8, 0.3)';
                         badgeEl.innerHTML = '🔒 Market Open';
-                    } else if (totalStocks > 0) {
+                    } else if (totalStocks > 0 || customTotal > 0) {
                         badgeEl.style.background = 'rgba(16, 185, 129, 0.15)';
                         badgeEl.style.color = '#10b981';
                         badgeEl.style.borderColor = 'rgba(16, 185, 129, 0.3)';
@@ -7089,14 +7128,18 @@
                     }
                 }
 
+                const countStr = customUniverse > 0
+                    ? `${totalStocks.toLocaleString()} / ${universe} Index • ${customTotal.toLocaleString()} / ${customUniverse} Custom`
+                    : `${totalStocks.toLocaleString()} / ${universe} Index`;
+
                 if (typeof updateSyncSummaryTableRow === 'function') {
                     updateSyncSummaryTableRow('stock_prices', {
-                        count: `${totalStocks.toLocaleString()} / ${universe} Stocks`,
+                        count: countStr,
                         lastSynced: lastSynced,
                         isSyncing: isSyncing,
                         message: s.progress || 'Ingesting closing prices from Yahoo Finance...',
                         percent: s.percent || 0,
-                        totalStr: `${totalStocks} Stocks`,
+                        totalStr: `${(totalStocks + customTotal).toLocaleString()} Stocks`,
                         customSuccessMsg: (!isSyncing && s.progress && s.progress !== 'Ready') ? s.progress : undefined,
                         error: s.last_error
                     });
@@ -7122,12 +7165,16 @@
             }
         }
 
-        async function triggerAdminStockPricesSync(overrideFull = false) {
-            const btn = document.getElementById('sync-tbl-btn-stock_prices');
+        async function triggerAdminStockPricesSync(overrideFull = false, scope = 'index') {
+            const targetScope = (scope === 'custom' || scope === 'all') ? scope : 'index';
+            const btn = document.getElementById(
+                targetScope === 'custom' ? 'sync-tbl-btn-custom_stock_prices' : 'sync-tbl-btn-stock_prices'
+            );
             const fullCheck = document.getElementById('sync-stock-prices-full-resync');
             const isFull = overrideFull || (fullCheck ? fullCheck.checked : false);
             const dateSelect = document.getElementById('sync-stock-prices-start-date');
             const startDate = dateSelect ? dateSelect.value : '2012-01-01';
+            const scopeLabel = targetScope === 'custom' ? 'custom/exited tracked stocks' : '750 index stocks';
 
             try {
                 if (btn) {
@@ -7138,7 +7185,9 @@
                 if (typeof updateSyncSummaryTableRow === 'function') {
                     updateSyncSummaryTableRow('stock_prices', {
                         isSyncing: true,
-                        message: isFull ? `Connecting to exchange closing feed (${startDate})...` : 'Connecting to exchange closing feed...',
+                        message: isFull
+                            ? `Syncing ${scopeLabel} from ${startDate}...`
+                            : `Connecting to exchange feed for ${scopeLabel}...`,
                         percent: 5
                     });
                 }
@@ -7149,6 +7198,7 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
+                        scope: targetScope,
                         full_resync: isFull,
                         force: isFull,
                         start_date: startDate,
@@ -7213,7 +7263,7 @@
             } finally {
                 if (btn) {
                     btn.disabled = false;
-                    btn.innerHTML = '⚡ Calc Monthly Averages';
+                    btn.innerHTML = '⚡ Calc Monthly Avg';
                 }
             }
         };
@@ -7223,13 +7273,15 @@
             if (!modal || modal.style.display !== 'block') return;
 
             const totalEl = document.getElementById('modal-sp-total-stocks');
+            const customEl = document.getElementById('modal-sp-custom-stocks');
             const dateEl = document.getElementById('modal-sp-latest-date');
             const pendEl = document.getElementById('modal-sp-pending-count');
             const mktEl = document.getElementById('modal-sp-market-status');
 
             if (totalEl) totalEl.textContent = `${(s.total_stocks || 0).toLocaleString()} / ${s.universe_size || 750}`;
+            if (customEl) customEl.textContent = `${(s.custom_total_stocks || 0).toLocaleString()} / ${s.custom_universe_size || 0}`;
             if (dateEl) dateEl.textContent = s.latest_trading_date || '—';
-            if (pendEl) pendEl.textContent = `${s.pending_count || 0} Stocks`;
+            if (pendEl) pendEl.textContent = `${s.pending_count || 0} Index • ${s.custom_pending_count || 0} Custom`;
             if (mktEl) {
                 mktEl.textContent = s.market_status || 'CLOSED';
                 mktEl.style.color = s.market_closed ? '#10b981' : '#ca8a04';
@@ -7253,7 +7305,7 @@
             const footerCount = document.getElementById('modal-sp-footer-count');
             if (!tbody) return;
 
-            tbody.innerHTML = '<tr><td colspan="7" style="padding: 24px; text-align: center; color: var(--text-secondary);"><span class="spin-anim">⏳</span> Loading 750 stock closing prices from database...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" style="padding: 24px; text-align: center; color: var(--text-secondary);"><span class="spin-anim">⏳</span> Loading stock closing prices from database...</td></tr>';
 
             try {
                 const res = await fetch('/api/stock_closing_prices');
@@ -7264,8 +7316,7 @@
                 }
 
                 _adminStockPricesCachedList = data.stocks || [];
-                renderAdminStockPricesModalTable(_adminStockPricesCachedList);
-                if (footerCount) footerCount.textContent = `Showing ${_adminStockPricesCachedList.length.toLocaleString()} constituent stocks`;
+                filterAdminStockPricesModalTable();
             } catch (e) {
                 tbody.innerHTML = `<tr><td colspan="7" style="padding: 24px; text-align: center; color: #ef4444;">Network error: ${e.message}</td></tr>`;
             }
@@ -7273,20 +7324,21 @@
 
         function filterAdminStockPricesModalTable() {
             const input = document.getElementById('modal-sp-search-input');
+            const scopeEl = document.getElementById('modal-sp-scope-filter');
             const q = input ? input.value.trim().toUpperCase() : '';
-            if (!q) {
-                renderAdminStockPricesModalTable(_adminStockPricesCachedList);
-                return;
-            }
+            const scopeVal = scopeEl ? scopeEl.value : 'all';
 
             const filtered = _adminStockPricesCachedList.filter(s => {
+                if (scopeVal === 'index' && s.is_custom) return false;
+                if (scopeVal === 'custom' && !s.is_custom) return false;
+                if (!q) return true;
                 const sym = (s.symbol || '').toUpperCase();
                 const name = (s.company_name || '').toUpperCase();
                 return sym.includes(q) || name.includes(q);
             });
             renderAdminStockPricesModalTable(filtered);
             const footerCount = document.getElementById('modal-sp-footer-count');
-            if (footerCount) footerCount.textContent = `Filtered ${filtered.length.toLocaleString()} of ${_adminStockPricesCachedList.length.toLocaleString()} stocks`;
+            if (footerCount) footerCount.textContent = `Showing ${filtered.length.toLocaleString()} of ${_adminStockPricesCachedList.length.toLocaleString()} stocks`;
         }
 
         function renderAdminStockPricesModalTable(stocks) {
@@ -7294,7 +7346,7 @@
             if (!tbody) return;
 
             if (!stocks || stocks.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" style="padding: 24px; text-align: center; color: var(--text-secondary);">No stock records found in database. Click "Sync Pending Closes" above to backfill.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" style="padding: 24px; text-align: center; color: var(--text-secondary);">No stock records found matching current filter.</td></tr>';
                 return;
             }
 
@@ -7305,11 +7357,14 @@
                 const isPositive = chg >= 0;
                 const chgColor = isPositive ? '#10b981' : '#ef4444';
                 const sign = isPositive ? '+' : '';
+                const customBadge = s.is_custom
+                    ? ' <span class="badge" style="background: rgba(14, 165, 233, 0.14); color: #0ea5e9; font-size: 10px; padding: 1px 5px; margin-left: 4px; font-weight: 600;">Custom</span>'
+                    : '';
 
                 html += `
                     <tr style="border-bottom: 1px solid var(--border-color);">
                         <td style="padding: 10px 14px; font-weight: 700; color: var(--text-primary); font-family: monospace; font-size: 13px;">
-                            ${s.symbol}
+                            ${s.symbol}${customBadge}
                         </td>
                         <td style="padding: 10px 14px; color: var(--text-secondary); max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                             ${s.company_name || s.symbol}

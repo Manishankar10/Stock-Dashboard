@@ -10,16 +10,14 @@ Evaluates historical portfolio valuation (invested capital vs current value) ove
 
 import bisect
 import logging
-import math
 import threading
-import time
 import uuid
 from datetime import date, datetime, timedelta
 
 from modules.momentum_smallcases.momentum_smallcases_calculator import (
     fetch_stock_daily_series,
     get_official_trading_holidays,
-    get_stock_closing_prices_from_db,
+    parse_date_fast,
     prewarm_stock_prices_cache,
 )
 
@@ -29,24 +27,14 @@ logger = logging.getLogger(__name__)
 _GRAPH_JOBS = {}
 _GRAPH_LOCK = threading.Lock()
 
-# Cached results per strategy_id: { strategy_id: { "cached_at": iso, "runs_count": int, "data": dict } }
+# Bounded LRU cache per strategy_id (prevents unbounded RAM growth)
+_MAX_GRAPH_CACHE_ENTRIES = 20
+_MAX_GRAPH_JOBS_ENTRIES = 25
 _GRAPH_CACHE = {}
 
 
 def _parse_date(d_val):
-    if not d_val:
-        return None
-    if isinstance(d_val, date):
-        return d_val
-    if isinstance(d_val, datetime):
-        return d_val.date()
-    try:
-        return datetime.fromisoformat(str(d_val)[:10]).date()
-    except Exception:
-        try:
-            return datetime.strptime(str(d_val)[:10], "%Y-%m-%d").date()
-        except Exception:
-            return None
+    return parse_date_fast(d_val)
 
 
 def calculate_strategy_performance_series(strategy, progress_callback=None):
@@ -168,6 +156,11 @@ def _calculate_rebalance_milestone_points(strategy, runs, today_d, progress_call
         wallet = float(strategy.get("current_wallet") or 0.0)
         curr_invested = float(strategy.get("total_capital") or strategy.get("amount_to_invest") or 0.0)
 
+        held_syms = [h.get("symbol") for h in holdings if h.get("symbol") and int(h.get("quantity") or 0) > 0]
+        win_min_today = (today_d - timedelta(days=15)).isoformat()
+        if held_syms:
+            prewarm_stock_prices_cache(held_syms, min_date=win_min_today, max_date=today_str)
+
         latest_holdings_val = 0.0
         for h in holdings:
             sym = h.get("symbol")
@@ -177,7 +170,7 @@ def _calculate_rebalance_milestone_points(strategy, runs, today_d, progress_call
 
             # 1. DB (stock_closing_prices) with live fallback
             price = None
-            series = fetch_stock_daily_series(sym, target_cutoff_date=today_d)
+            series = fetch_stock_daily_series(sym, target_cutoff_date=today_d, min_date=win_min_today)
             if series and len(series) > 0:
                 price = float(series[-1][1])
             else:
@@ -216,35 +209,32 @@ def _calculate_daily_points(strategy, runs, start_d, today_d, progress_callback=
     if progress_callback:
         progress_callback(f"Loading prices for {len(symbols_list)} stocks (DB Priority 1, Live Fallback 2)...")
 
-    prewarm_stock_prices_cache(symbols_list)
+    win_min = (start_d - timedelta(days=10)).isoformat()
+    win_max = today_d.isoformat()
+    if symbols_list:
+        prewarm_stock_prices_cache(symbols_list, min_date=win_min, max_date=win_max)
 
-    # Map: sym -> { date_str: close_price } and sorted_dates list for binary search
-    stock_price_dict = {}
-    stock_date_keys = {}
+    # Map: sym -> sorted parallel arrays (dates_list, prices_list) for O(log N) lookup
+    stock_series_arrays = {}
 
     for idx, sym in enumerate(symbols_list):
         if progress_callback and (idx % 3 == 0 or idx == len(symbols_list) - 1):
             progress_callback(f"Fetching quotes for {sym} ({idx + 1}/{len(symbols_list)})...")
 
         # 1. DB Primary, 2. Live Provider Fallback
-        series = fetch_stock_daily_series(sym, target_cutoff_date=today_d)
+        series = fetch_stock_daily_series(sym, target_cutoff_date=today_d, min_date=win_min)
         if series:
-            p_map = {}
+            d_keys = []
+            p_vals = []
             for d_val, c in series:
-                if isinstance(d_val, (date, datetime)):
-                    d_k = d_val.strftime("%Y-%m-%d")
-                else:
-                    d_k = str(d_val)[:10]
-                try:
-                    p_map[d_k] = round(float(c), 2)
-                except Exception:
+                d_obj = d_val if (isinstance(d_val, date) and not isinstance(d_val, datetime)) else parse_date_fast(d_val)
+                if d_obj is None:
                     continue
-            d_keys = sorted(p_map.keys())
-            stock_price_dict[sym] = p_map
-            stock_date_keys[sym] = d_keys
+                d_keys.append(d_obj)
+                p_vals.append(round(float(c), 2))
+            stock_series_arrays[sym] = (d_keys, p_vals)
         else:
-            stock_price_dict[sym] = {}
-            stock_date_keys[sym] = []
+            stock_series_arrays[sym] = ([], [])
 
     # 2. Collect official holidays
     holidays_set = get_official_trading_holidays()
@@ -287,37 +277,26 @@ def _calculate_daily_points(strategy, runs, start_d, today_d, progress_callback=
     points = []
     total_td = len(trading_days)
 
-    def _get_close_price(sym_name, target_day_val, fallback_price):
-        p_dict = stock_price_dict.get(sym_name)
-        if not p_dict:
+    def _get_close_price(sym_name, target_day, fallback_price):
+        arr = stock_series_arrays.get(sym_name)
+        if not arr or not arr[0]:
             return fallback_price
-        if isinstance(target_day_val, (date, datetime)):
-            target_k = target_day_val.strftime("%Y-%m-%d")
-        else:
-            target_k = str(target_day_val)[:10]
-
-        if target_k in p_dict:
-            return p_dict[target_k]
-        keys = stock_date_keys.get(sym_name) or []
-        if not keys:
-            return fallback_price
-        idx = bisect.bisect_right(keys, target_k) - 1
-        if idx >= 0:
-            return p_dict[keys[idx]]
+        keys, vals = arr
+        pos = bisect.bisect_right(keys, target_day) - 1
+        if pos >= 0:
+            return vals[pos]
         return fallback_price
 
+    run_cursor = 0
+    num_runs = len(parsed_runs)
     for i, t_day in enumerate(trading_days):
         t_str = t_day.isoformat()
         if progress_callback and (i % 20 == 0 or i == total_td - 1):
             progress_callback(f"Evaluating daily valuations (day {i + 1} of {total_td})...")
 
-        # Find active run for this day (latest run on or before t_day)
-        active_run = None
-        for r in parsed_runs:
-            if r["date"] <= t_day:
-                active_run = r
-            else:
-                break
+        while (run_cursor + 1) < num_runs and parsed_runs[run_cursor + 1]["date"] <= t_day:
+            run_cursor += 1
+        active_run = parsed_runs[run_cursor] if parsed_runs[run_cursor]["date"] <= t_day else None
 
         if not active_run:
             continue
@@ -333,7 +312,7 @@ def _calculate_daily_points(strategy, runs, start_d, today_d, progress_callback=
             if not sym or qty <= 0:
                 continue
             fallback_p = float(h.get("current_price") or h.get("buy_price") or 0.0)
-            close_p = _get_close_price(sym, t_str, fallback_p)
+            close_p = _get_close_price(sym, t_day, fallback_p)
             day_stock_val += qty * close_p
 
         total_day_val = round(day_stock_val + wallet, 2)
@@ -615,6 +594,10 @@ def start_performance_graph_job(strategy_id, username=None, force_refresh=False)
             "result": None,
             "error": None
         }
+        if len(_GRAPH_JOBS) >= _MAX_GRAPH_JOBS_ENTRIES:
+            done_keys = [k for k, v in _GRAPH_JOBS.items() if v.get("status") in ("COMPLETED", "FAILED")]
+            for k in done_keys[: max(1, len(_GRAPH_JOBS) - _MAX_GRAPH_JOBS_ENTRIES + 1)]:
+                _GRAPH_JOBS.pop(k, None)
         _GRAPH_JOBS[job_id] = job_data
 
     def _worker():
@@ -635,7 +618,11 @@ def start_performance_graph_job(strategy_id, username=None, force_refresh=False)
                     _GRAPH_JOBS[job_id]["completed_at"] = datetime.now().isoformat()
                     _GRAPH_JOBS[job_id]["result"] = result
 
-                # Update cache
+                # Bounded LRU update: refresh key order and evict oldest beyond cap
+                _GRAPH_CACHE.pop(strategy_id, None)
+                while len(_GRAPH_CACHE) >= _MAX_GRAPH_CACHE_ENTRIES:
+                    oldest_key = next(iter(_GRAPH_CACHE))
+                    _GRAPH_CACHE.pop(oldest_key, None)
                 _GRAPH_CACHE[strategy_id] = {
                     "cached_at": datetime.now().isoformat(),
                     "runs_count": len(runs),

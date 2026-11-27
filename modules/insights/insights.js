@@ -660,14 +660,7 @@
                 .catch(err => console.error('Error loading market indexes:', err));
 
             // 3. Parallel Fetch: FII / DII Flow (~300ms)
-            fetch('/api/insights/fiidii')
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        renderInsightsFiiDiiUI(data.fii_dii);
-                    }
-                })
-                .catch(err => console.error('Error loading FII/DII data:', err));
+            loadInsightsFiiDii(false);
 
             // 4. Parallel Fetch: News Articles Feed (~400ms)
             const feedEl = document.getElementById('insights-news-feed');
@@ -1200,12 +1193,39 @@
             });
         }
 
+        function loadInsightsFiiDii(forceRefresh = false) {
+            const btn = document.getElementById('fiidii-refresh-btn');
+            if (btn && forceRefresh) {
+                btn.disabled = true;
+                btn.textContent = '⏳ Syncing...';
+            }
+            fetch(`/api/insights/fiidii${forceRefresh ? '?refresh=1' : ''}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success && data.fii_dii) {
+                        renderInsightsFiiDiiUI(data.fii_dii);
+                    }
+                })
+                .catch(err => console.error('Error loading FII/DII data:', err))
+                .finally(() => {
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.textContent = '🔄 Refresh';
+                    }
+                });
+        }
+        window.loadInsightsFiiDii = loadInsightsFiiDii;
+
         function renderInsightsFiiDiiUI(fd) {
             const fiiMount = document.getElementById('insights-fiidii-mount');
             const fiiDateTag = document.getElementById('fiidii-date-tag');
             if (!fiiMount || !fd) return;
 
-            if (fiiDateTag && fd.date) fiiDateTag.innerText = window.formatAppDate ? window.formatAppDate(fd.date) : fd.date;
+            if (fiiDateTag && fd.date) {
+                const formatted = window.formatAppDate ? window.formatAppDate(fd.date) : fd.date;
+                fiiDateTag.innerText = fd.source ? `${formatted} · ${fd.source}` : formatted;
+                if (fd.status_label) fiiDateTag.title = fd.status_label;
+            }
 
             const fiiPos = fd.fii_net >= 0;
             const diiPos = fd.dii_net >= 0;

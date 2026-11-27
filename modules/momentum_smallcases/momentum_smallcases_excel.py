@@ -8,7 +8,8 @@ ordered descending by total formula score.
 import io
 import os
 import re
-from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, date, timedelta
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
@@ -16,79 +17,92 @@ from openpyxl.utils import get_column_letter
 from modules.momentum_smallcases.momentum_smallcases_store import (
     get_user_strategy,
     get_strategy_index_constituents,
-    save_user_momentum_smallcases,
-    load_user_momentum_smallcases
 )
 from modules.momentum_smallcases.momentum_smallcases_calculator import (
+    calculate_stock_momentum_metrics,
+    is_in_trading_hours_now,
+    parse_date_fast,
+    prewarm_stock_prices_cache,
     rank_and_evaluate_universe,
-    save_price_cache
 )
 
 
-def get_run_all_ranked_stocks(strategy_id, run_index=None, username=None):
+def _enrich_ranked_stocks_with_windows(strategy, run, all_stocks, prewarm=True):
     """
-    Retrieves all eligible constituent stocks calculated and ranked by momentum score
-    for a strategy run. If all_ranked_stocks is not yet saved in the run, computes it,
-    merges executed actions/allocations, and caches it into the user's strategy file.
-    Returns: (strategy, run, all_stocks_list)
+    Returns a shallow-copied list of ranked stock dicts with `windows` populated
+    (`ret_*_start`/`end`, `vol_*_start`/`end`) for Excel audit columns without
+    mutating stored DB snapshots.
     """
-    strat = get_user_strategy(strategy_id, username=username)
-    if not strat:
-        raise ValueError(f"Strategy '{strategy_id}' not found")
+    if not all_stocks:
+        return []
+    exec_date_str = (run or {}).get("executed_date") or (run or {}).get("scheduled_date")
+    exec_date = parse_date_fast(exec_date_str)
+    if exec_date is None:
+        return [dict(s) for s in all_stocks]
 
-    runs = strat.get("runs", [])
-    if not runs:
-        raise ValueError(f"Strategy '{strategy_id}' has no execution runs yet.")
+    td = (strategy or {}).get("trading_days_per_month", 30)
+    in_trading = is_in_trading_hours_now() if (exec_date == date.today()) else False
 
-    # Determine run index (default to selected or latest)
-    if run_index is None:
-        idx = len(runs) - 1
-    else:
+    missing_syms = [
+        str(s.get("symbol") or "").strip().upper()
+        for s in all_stocks
+        if not s.get("windows") and s.get("symbol")
+    ]
+    missing_syms = list(dict.fromkeys(missing_syms))
+    if not missing_syms:
+        return [dict(s) for s in all_stocks]
+
+    if prewarm:
+        win_min = (exec_date - timedelta(days=450)).isoformat()
+        win_max = exec_date.isoformat()
+        prewarm_stock_prices_cache(missing_syms, min_date=win_min, max_date=win_max)
+
+    windows_by_sym = {}
+
+    def _calc(sym):
         try:
-            idx = int(run_index)
+            m = calculate_stock_momentum_metrics(
+                sym, exec_date, in_trading_hours=in_trading, trading_days_per_month=td, include_windows=True
+            )
+            if m and m.get("windows"):
+                return sym, m["windows"]
         except Exception:
-            idx = len(runs) - 1
+            pass
+        return sym, None
 
-    if idx < 0 or idx >= len(runs):
-        idx = max(0, min(len(runs) - 1, idx))
+    worker_count = min(8, max(1, len(missing_syms)))
+    with ThreadPoolExecutor(max_workers=worker_count) as executor:
+        for sym, w in executor.map(_calc, missing_syms):
+            if w:
+                windows_by_sym[sym] = w
 
-    target_run = runs[idx]
+    enriched = []
+    for s in all_stocks:
+        copy_s = dict(s)
+        sym = str(copy_s.get("symbol") or "").strip().upper()
+        if not copy_s.get("windows") and sym in windows_by_sym:
+            copy_s["windows"] = windows_by_sym[sym]
+        enriched.append(copy_s)
+    return enriched
 
-    # If all_ranked_stocks is already stored and populated
-    all_stocks = target_run.get("all_ranked_stocks")
-    if all_stocks and len(all_stocks) > 0:
-        return strat, target_run, all_stocks
 
-    # Otherwise, calculate all eligible stocks on the run date
+def _compute_run_all_ranked_stocks(strat, target_run, constituents, username=None):
+    """Computes missing all_ranked_stocks for a run using pre-loaded strategy & constituents."""
     exec_date_str = target_run.get("executed_date") or target_run.get("scheduled_date")
-    try:
-        exec_date = datetime.strptime(str(exec_date_str)[:10], "%Y-%m-%d").date()
-    except Exception:
-        exec_date = datetime.now().date()
+    exec_date = parse_date_fast(exec_date_str, fallback=datetime.now().date())
 
-    constituents = get_strategy_index_constituents(
-        strat.get("index_id"),
-        strat.get("index_type", "manual"),
-        username=username
-    )
-
-    if not constituents:
-        raise ValueError(f"No constituents found for index '{strat.get('index_name')}'")
-
-    ranked_displayed, eligible_count, meta = rank_and_evaluate_universe(
+    ranked_displayed, _eligible_count, meta = rank_and_evaluate_universe(
         stock_items=constituents,
         target_date=exec_date,
         formula_str=target_run.get("formula_used") or strat.get("formula"),
         no_of_stocks=strat.get("no_of_stocks", 12),
         exit_regime_ranking=strat.get("exit_regime_ranking", 15),
         return_meta=True,
-        save_cache=True,
+        save_cache=False,
         trading_days_per_month=strat.get("trading_days_per_month", 30)
     )
-
     all_calculated = meta.get("all_stocks") or ranked_displayed or []
 
-    # Merge executed allocation fields from target_run['ranked_stocks']
     executed_map = {s["symbol"]: s for s in target_run.get("ranked_stocks", [])}
     for s in all_calculated:
         sym = s["symbol"]
@@ -107,32 +121,156 @@ def get_run_all_ranked_stocks(strategy_id, run_index=None, username=None):
             s.setdefault("weight_percent", 0.0)
             s.setdefault("fee", 0.0)
             s.setdefault("is_held", False)
+    return all_calculated
 
-    # Cache back into user file
+
+def _persist_backfilled_all_ranked(strategy_id, updated_runs_map, username=None, runs_list=None, runs_externalized=False):
+    """Persists newly backfilled all_ranked_stocks into normalized snapshot collection or embedded runs."""
+    if not updated_runs_map:
+        return
     try:
-        data = load_user_momentum_smallcases(username)
+        from modules.momentum_smallcases.momentum_smallcases_store import (
+            RANKED_SNAPSHOTS_COLLECTION,
+            _resolve_username,
+            _safe_user,
+            load_user_momentum_smallcases,
+            save_user_momentum_smallcases,
+        )
+        import db_store
+        user = _resolve_username(username)
+        safe_u = _safe_user(user)
+        if db_store.db is not None and user:
+            db = db_store.db
+            if runs_externalized and runs_list is not None:
+                from pymongo import ReplaceOne
+                ops = []
+                for idx, stocks in updated_runs_map.items():
+                    if 0 <= idx < len(runs_list):
+                        rid = runs_list[idx].get("run_id") or f"run_{idx}"
+                        doc_id = f"{strategy_id}:{rid}"
+                        ops.append(ReplaceOne(
+                            {"_id": doc_id},
+                            {
+                                "_id": doc_id,
+                                "username": safe_u,
+                                "strategy_id": strategy_id,
+                                "run_id": rid,
+                                "run_index": idx,
+                                "all_ranked_stocks": stocks,
+                            },
+                            upsert=True,
+                        ))
+                if ops:
+                    db[RANKED_SNAPSHOTS_COLLECTION].bulk_write(ops, ordered=False)
+                return
+
+            set_fields = {
+                f"data.strategies.$.runs.{idx}.all_ranked_stocks": stocks
+                for idx, stocks in updated_runs_map.items()
+            }
+            res = db["momentum_smallcases"].update_one(
+                {"_id": safe_u, "data.strategies.id": strategy_id},
+                {"$set": set_fields}
+            )
+            if res.matched_count > 0:
+                return
+        data = load_user_momentum_smallcases(user)
         for st in data.get("strategies", []):
             if st.get("id") == strategy_id:
-                if "runs" in st and len(st["runs"]) > idx:
-                    st["runs"][idx]["all_ranked_stocks"] = all_calculated
-                    save_user_momentum_smallcases(data, username)
-                    break
-    except Exception as e:
-        # Non-fatal caching warning
+                runs = st.get("runs") or []
+                for idx, stocks in updated_runs_map.items():
+                    if 0 <= idx < len(runs):
+                        runs[idx]["all_ranked_stocks"] = stocks
+                save_user_momentum_smallcases(data, user)
+                break
+    except Exception:
         pass
 
+
+def get_run_all_ranked_stocks(strategy_id, run_index=None, username=None):
+    """
+    Retrieves all eligible constituent stocks calculated and ranked by momentum score
+    for a strategy run. Checks normalized snapshot collection before recomputing.
+    Returns: (strategy, run, all_stocks_list)
+    """
+    strat = get_user_strategy(strategy_id, username=username, include_all_ranked=False)
+    if not strat:
+        raise ValueError(f"Strategy '{strategy_id}' not found")
+
+    runs = strat.get("runs", [])
+    if not runs:
+        raise ValueError(f"Strategy '{strategy_id}' has no execution runs yet.")
+
+    if run_index is None:
+        idx = len(runs) - 1
+    else:
+        try:
+            idx = int(run_index)
+        except Exception:
+            idx = len(runs) - 1
+
+    if idx < 0 or idx >= len(runs):
+        idx = max(0, min(len(runs) - 1, idx))
+
+    target_run = runs[idx]
+    all_stocks = target_run.get("all_ranked_stocks")
+    if all_stocks and len(all_stocks) > 0:
+        return strat, target_run, all_stocks
+
+    # Direct single-snapshot lookup in momentum_smallcase_ranked_snapshots
+    try:
+        from modules.momentum_smallcases.momentum_smallcases_store import RANKED_SNAPSHOTS_COLLECTION
+        import db_store
+        if db_store.db is not None:
+            rid = target_run.get("run_id")
+            q = {"_id": f"{strategy_id}:{rid}"} if rid else {"strategy_id": strategy_id, "run_index": idx}
+            snap = db_store.db[RANKED_SNAPSHOTS_COLLECTION].find_one(q, {"_id": 0, "all_ranked_stocks": 1})
+            if not snap and rid:
+                snap = db_store.db[RANKED_SNAPSHOTS_COLLECTION].find_one(
+                    {"strategy_id": strategy_id, "run_index": idx},
+                    {"_id": 0, "all_ranked_stocks": 1},
+                )
+            if snap and snap.get("all_ranked_stocks"):
+                all_stocks = snap["all_ranked_stocks"]
+                target_run["all_ranked_stocks"] = all_stocks
+                return strat, target_run, all_stocks
+    except Exception:
+        pass
+
+    # Legacy embedded check if include_all_ranked=False stripped it on non-externalized doc
+    if not strat.get("runs_externalized"):
+        full_strat = get_user_strategy(strategy_id, username=username, include_all_ranked=True)
+        if full_strat and idx < len(full_strat.get("runs", [])):
+            leg = full_strat["runs"][idx].get("all_ranked_stocks")
+            if leg:
+                target_run["all_ranked_stocks"] = leg
+                return full_strat, full_strat["runs"][idx], leg
+
+    constituents = get_strategy_index_constituents(
+        strat.get("index_id"),
+        strat.get("index_type", "manual"),
+        username=username
+    )
+    if not constituents:
+        raise ValueError(f"No constituents found for index '{strat.get('index_name')}'")
+
+    all_calculated = _compute_run_all_ranked_stocks(strat, target_run, constituents, username=username)
     target_run["all_ranked_stocks"] = all_calculated
+    _persist_backfilled_all_ranked(
+        strategy_id,
+        {idx: all_calculated},
+        username=username,
+        runs_list=runs,
+        runs_externalized=bool(strat.get("runs_externalized")),
+    )
     return strat, target_run, all_calculated
 
 
 def format_run_sheet_title(run, run_index=None, used_titles=None):
     """Formats sheet title like '#1 Jan 25' or 'Init Jan 25' conforming to Excel's 31-char limit."""
     exec_date_str = run.get("executed_date") or run.get("scheduled_date") or ""
-    try:
-        dt = datetime.strptime(str(exec_date_str)[:10], "%Y-%m-%d")
-        month_yr = dt.strftime("%b %y")
-    except Exception:
-        month_yr = "Date"
+    dt = parse_date_fast(exec_date_str)
+    month_yr = dt.strftime("%b %y") if dt else "Date"
 
     r_num = run.get("run_number")
     if r_num is None and run_index is not None:
@@ -161,9 +299,12 @@ def populate_ranked_stocks_worksheet(ws, strategy, run, all_stocks, sheet_title=
     """Populates an openpyxl Worksheet with formatted ranked stocks for a specific run."""
     ws.title = sheet_title or format_run_sheet_title(run)
     ws.views.sheetView[0].showGridLines = True
+    ws.sheet_properties.outlinePr.summaryRight = False
+    ws.sheet_view.showOutlineSymbols = True
 
     # Palettes & Styling
     navy_header_fill = PatternFill(start_color="1E293B", end_color="1E293B", fill_type="solid")
+    detail_header_fill = PatternFill(start_color="334155", end_color="334155", fill_type="solid")
     meta_bg_fill = PatternFill(start_color="0F172A", end_color="0F172A", fill_type="solid")
     top_tier_fill = PatternFill(start_color="ECFDF5", end_color="ECFDF5", fill_type="solid")    # soft emerald
     exit_tier_fill = PatternFill(start_color="FEFCE8", end_color="FEFCE8", fill_type="solid")   # soft amber
@@ -174,7 +315,9 @@ def populate_ranked_stocks_worksheet(ws, strategy, run, all_stocks, sheet_title=
     font_meta_bold = Font(name="Segoe UI", size=9.5, bold=True, color="FFFFFF")
     font_formula = Font(name="Consolas", size=9.5, color="34D399")
     font_col_header = Font(name="Segoe UI", size=10, bold=True, color="FFFFFF")
+    font_detail_header = Font(name="Segoe UI", size=9.5, bold=True, color="E2E8F0")
     font_data = Font(name="Segoe UI", size=10, color="0F172A")
+    font_detail_data = Font(name="Segoe UI", size=9.5, color="475569")
     font_sym_bold = Font(name="Segoe UI", size=10, bold=True, color="0F172A")
     font_top_tier = Font(name="Segoe UI", size=10, bold=True, color="047857")
     font_exit_tier = Font(name="Segoe UI", size=10, bold=True, color="B45309")
@@ -209,74 +352,82 @@ def populate_ranked_stocks_worksheet(ws, strategy, run, all_stocks, sheet_title=
     no_of_stocks = strategy.get("no_of_stocks", 12)
     exit_regime = strategy.get("exit_regime_ranking", 15)
 
+    # Column specifications: (title, align, width, is_detail_col)
+    columns_spec = [
+        ("RANK", align_center, 9, False),
+        ("STOCK SYMBOL", align_left, 17, False),
+        ("PORTFOLIO TIER", align_center, 16, False),
+        ("ACTION", align_center, 12, False),
+        ("MOMENTUM SCORE", align_right, 18, False),
+        ("CLOSING PRICE (₹)", align_right, 18, False),
+        ("1M RETURN", align_right, 15, False),
+        ("1M START", align_center, 15, True),
+        ("1M END", align_center, 15, True),
+        ("2M RETURN", align_right, 15, False),
+        ("2M START", align_center, 15, True),
+        ("2M END", align_center, 15, True),
+        ("5M RETURN", align_right, 15, False),
+        ("5M START", align_center, 15, True),
+        ("5M END", align_center, 15, True),
+        ("9M RETURN", align_right, 15, False),
+        ("9M START", align_center, 15, True),
+        ("9M END", align_center, 15, True),
+        ("1M VOLATILITY", align_right, 16, False),
+        ("1M VOL START", align_center, 15, True),
+        ("1M VOL END", align_center, 15, True),
+        ("3M VOLATILITY", align_right, 16, False),
+        ("3M VOL START", align_center, 15, True),
+        ("3M VOL END", align_center, 15, True),
+        ("QUANTITY", align_right, 12, False),
+        ("ALLOCATED AMOUNT", align_right, 19, False),
+        ("PORTFOLIO WEIGHT", align_right, 17, False),
+    ]
+    last_col_letter = get_column_letter(len(columns_spec))
+
     # 1. Metadata Block (Rows 1 to 5)
-    ws.merge_cells("A1:O1")
-    title_cell = ws["A1"]
-    title_cell.value = f"CAPITAL DESK  ·  {strat_name.upper()}  ·  RANKED STOCKS"
-    title_cell.font = font_title
-    title_cell.fill = meta_bg_fill
-    title_cell.alignment = Alignment(horizontal="left", vertical="center", indent=1)
-    ws.row_dimensions[1].height = 36
-
-    ws.merge_cells("A2:O2")
-    row2_cell = ws["A2"]
-    row2_cell.value = f"Milestone: {run_title}  |  Executed Date: {exec_date}  |  Index Universe: {index_name}  |  Eligible Stocks Evaluated: {len(all_stocks)}"
-    row2_cell.font = font_meta
-    row2_cell.fill = meta_bg_fill
-    row2_cell.alignment = Alignment(horizontal="left", vertical="center", indent=1)
-    ws.row_dimensions[2].height = 20
-
-    ws.merge_cells("A3:O3")
-    row3_cell = ws["A3"]
-    row3_cell.value = f"Momentum Formula: {formula_str}"
-    row3_cell.font = font_formula
-    row3_cell.fill = meta_bg_fill
-    row3_cell.alignment = Alignment(horizontal="left", vertical="center", indent=1)
-    ws.row_dimensions[3].height = 20
-
-    ws.merge_cells("A4:O4")
-    row4_cell = ws["A4"]
-    row4_cell.value = f"Portfolio Allocation Rules: Top {no_of_stocks} Picks (Green / Top Selection)  |  Exit Regime: Rank <= {exit_regime} (Dark Yellow / Safe Holding)  |  Ranks > {exit_regime} (Excluded)"
-    row4_cell.font = font_meta
-    row4_cell.fill = meta_bg_fill
-    row4_cell.alignment = Alignment(horizontal="left", vertical="center", indent=1)
-    ws.row_dimensions[4].height = 20
+    meta_rows = [
+        (1, 36, font_title, f"CAPITAL DESK  ·  {strat_name.upper()}  ·  RANKED STOCKS"),
+        (2, 20, font_meta, f"Milestone: {run_title}  |  Executed Date: {exec_date}  |  Index Universe: {index_name}  |  Eligible Stocks Evaluated: {len(all_stocks)}"),
+        (3, 20, font_formula, f"Momentum Formula: {formula_str}"),
+        (4, 20, font_meta, f"Portfolio Allocation Rules: Top {no_of_stocks} Picks (Green / Top Selection)  |  Exit Regime: Rank <= {exit_regime} (Dark Yellow / Safe Holding)  |  Ranks > {exit_regime} (Excluded)"),
+    ]
+    for r_idx, r_height, r_font, r_val in meta_rows:
+        ws.merge_cells(f"A{r_idx}:{last_col_letter}{r_idx}")
+        c = ws[f"A{r_idx}"]
+        c.value = r_val
+        c.font = r_font
+        c.fill = meta_bg_fill
+        c.alignment = Alignment(horizontal="left", vertical="center", indent=1)
+        ws.row_dimensions[r_idx].height = r_height
 
     # Row 5 Blank Separator
     ws.row_dimensions[5].height = 8
 
     # 2. Table Column Headers (Row 6)
-    headers = [
-        ("RANK", align_center),
-        ("STOCK SYMBOL", align_left),
-        ("PORTFOLIO TIER", align_center),
-        ("ACTION", align_center),
-        ("MOMENTUM SCORE", align_right),
-        ("CLOSING PRICE (₹)", align_right),
-        ("1M RETURN", align_right),
-        ("2M RETURN", align_right),
-        ("5M RETURN", align_right),
-        ("9M RETURN", align_right),
-        ("1M VOLATILITY", align_right),
-        ("3M VOLATILITY", align_right),
-        ("QUANTITY", align_right),
-        ("ALLOCATED AMOUNT", align_right),
-        ("PORTFOLIO WEIGHT", align_right),
-    ]
-
     header_row_idx = 6
     ws.row_dimensions[header_row_idx].height = 28
 
-    for col_idx, (col_name, col_align) in enumerate(headers, 1):
+    for col_idx, (col_name, col_align, _width, is_detail) in enumerate(columns_spec, 1):
         cell = ws.cell(row=header_row_idx, column=col_idx)
         cell.value = col_name
-        cell.font = font_col_header
-        cell.fill = navy_header_fill
+        cell.font = font_detail_header if is_detail else font_col_header
+        cell.fill = detail_header_fill if is_detail else navy_header_fill
         cell.alignment = col_align
         cell.border = header_border
 
     # Sort all_stocks strictly descending by score
-    sorted_stocks = sorted(all_stocks, key=lambda x: float(x.get("total_score") if x.get("total_score") is not None else -9999.0), reverse=True)
+    sorted_stocks = sorted(
+        all_stocks,
+        key=lambda x: float(x.get("total_score") if x.get("total_score") is not None else -9999.0),
+        reverse=True,
+    )
+
+    action_font_map = {
+        "BUY": font_action_buy,
+        "HOLD": font_action_hold,
+        "EXIT": font_action_exit,
+        "SELL": font_action_exit,
+    }
 
     # 3. Data Rows
     current_row = 7
@@ -285,7 +436,7 @@ def populate_ranked_stocks_worksheet(ws, strategy, run, all_stocks, sheet_title=
         sym = stock.get("symbol", "")
         score = float(stock.get("total_score") if stock.get("total_score") is not None else 0.0)
         price = float(stock.get("price") if stock.get("price") is not None else 0.0)
-        
+
         ret_1m = float(stock.get("return_1m", stock.get("ret_1m", 0.0)) or 0.0) / 100.0
         ret_2m = float(stock.get("return_2m", stock.get("ret_2m", 0.0)) or 0.0) / 100.0
         ret_5m = float(stock.get("return_5m", stock.get("ret_5m", 0.0)) or 0.0) / 100.0
@@ -294,12 +445,13 @@ def populate_ranked_stocks_worksheet(ws, strategy, run, all_stocks, sheet_title=
         vol_1m = float(stock.get("volatility_1m", stock.get("vol_1m", 0.0)) or 0.0) / 100.0
         vol_3m = float(stock.get("volatility_3m", stock.get("vol_3m", 0.0)) or 0.0) / 100.0
 
+        windows = stock.get("windows") or {}
+
         action = str(stock.get("action") or "—").strip()
         qty = int(stock.get("quantity") or 0)
         allocated = float(stock.get("allocated_amount") or 0.0)
         weight = float(stock.get("weight_percent") or 0.0) / 100.0
 
-        # Tier assignment
         if rank <= no_of_stocks:
             tier_label = "Top Selection"
             row_fill = top_tier_fill
@@ -313,162 +465,75 @@ def populate_ranked_stocks_worksheet(ws, strategy, run, all_stocks, sheet_title=
             row_fill = alt_row_fill if (rank % 2 == 0) else PatternFill(fill_type=None)
             tier_font = font_excluded
 
-        # Action font color
-        if action == "BUY":
-            action_font = font_action_buy
-        elif action == "HOLD":
-            action_font = font_action_hold
-        elif action in ("EXIT", "SELL"):
-            action_font = font_action_exit
-        else:
-            action_font = font_excluded
+        action_font = action_font_map.get(action, font_excluded)
+        score_font = font_sym_bold if rank <= exit_regime else font_data
 
         ws.row_dimensions[current_row].height = 20
 
-        # Values & formatting per column
-        # Col 1: Rank
-        c1 = ws.cell(row=current_row, column=1, value=rank)
-        c1.alignment = align_center
-        c1.font = font_sym_bold if rank <= exit_regime else font_data
-        c1.border = thin_border
-        if row_fill.fill_type: c1.fill = row_fill
+        # Per-cell tuples: (value, font, number_format)
+        row_cells = [
+            (rank, score_font, None),
+            (sym, font_sym_bold, None),
+            (tier_label, tier_font, None),
+            (action, action_font, None),
+            (score, score_font, "0.0000"),
+            (price, font_data, "₹#,##0.00"),
+            (ret_1m, font_data, "+0.00%;-0.00%;0.00%"),
+            (windows.get("ret_1m_start", "—"), font_detail_data, None),
+            (windows.get("ret_1m_end", "—"), font_detail_data, None),
+            (ret_2m, font_data, "+0.00%;-0.00%;0.00%"),
+            (windows.get("ret_2m_start", "—"), font_detail_data, None),
+            (windows.get("ret_2m_end", "—"), font_detail_data, None),
+            (ret_5m, font_data, "+0.00%;-0.00%;0.00%"),
+            (windows.get("ret_5m_start", "—"), font_detail_data, None),
+            (windows.get("ret_5m_end", "—"), font_detail_data, None),
+            (ret_9m, font_data, "+0.00%;-0.00%;0.00%"),
+            (windows.get("ret_9m_start", "—"), font_detail_data, None),
+            (windows.get("ret_9m_end", "—"), font_detail_data, None),
+            (vol_1m, font_data, "0.00%"),
+            (windows.get("vol_1m_start", "—"), font_detail_data, None),
+            (windows.get("vol_1m_end", "—"), font_detail_data, None),
+            (vol_3m, font_data, "0.00%"),
+            (windows.get("vol_3m_start", "—"), font_detail_data, None),
+            (windows.get("vol_3m_end", "—"), font_detail_data, None),
+            (qty if qty > 0 else "—", font_data, "#,##0" if qty > 0 else None),
+            (allocated if allocated > 0 else "—", font_data, "₹#,##0.00" if allocated > 0 else None),
+            (weight if weight > 0 else "—", font_data, "0.00%" if weight > 0 else None),
+        ]
 
-        # Col 2: Stock Symbol
-        c2 = ws.cell(row=current_row, column=2, value=sym)
-        c2.alignment = align_left
-        c2.font = font_sym_bold
-        c2.border = thin_border
-        if row_fill.fill_type: c2.fill = row_fill
-
-        # Col 3: Portfolio Tier
-        c3 = ws.cell(row=current_row, column=3, value=tier_label)
-        c3.alignment = align_center
-        c3.font = tier_font
-        c3.border = thin_border
-        if row_fill.fill_type: c3.fill = row_fill
-
-        # Col 4: Action
-        c4 = ws.cell(row=current_row, column=4, value=action)
-        c4.alignment = align_center
-        c4.font = action_font
-        c4.border = thin_border
-        if row_fill.fill_type: c4.fill = row_fill
-
-        # Col 5: Momentum Score
-        c5 = ws.cell(row=current_row, column=5, value=score)
-        c5.alignment = align_right
-        c5.font = font_sym_bold if rank <= exit_regime else font_data
-        c5.number_format = "0.0000"
-        c5.border = thin_border
-        if row_fill.fill_type: c5.fill = row_fill
-
-        # Col 6: Closing Price (₹)
-        c6 = ws.cell(row=current_row, column=6, value=price)
-        c6.alignment = align_right
-        c6.font = font_data
-        c6.number_format = "₹#,##0.00"
-        c6.border = thin_border
-        if row_fill.fill_type: c6.fill = row_fill
-
-        # Col 7: 1M Return
-        c7 = ws.cell(row=current_row, column=7, value=ret_1m)
-        c7.alignment = align_right
-        c7.font = font_data
-        c7.number_format = "+0.00%;-0.00%;0.00%"
-        c7.border = thin_border
-        if row_fill.fill_type: c7.fill = row_fill
-
-        # Col 8: 2M Return
-        c8 = ws.cell(row=current_row, column=8, value=ret_2m)
-        c8.alignment = align_right
-        c8.font = font_data
-        c8.number_format = "+0.00%;-0.00%;0.00%"
-        c8.border = thin_border
-        if row_fill.fill_type: c8.fill = row_fill
-
-        # Col 9: 5M Return
-        c9 = ws.cell(row=current_row, column=9, value=ret_5m)
-        c9.alignment = align_right
-        c9.font = font_data
-        c9.number_format = "+0.00%;-0.00%;0.00%"
-        c9.border = thin_border
-        if row_fill.fill_type: c9.fill = row_fill
-
-        # Col 10: 9M Return
-        c10 = ws.cell(row=current_row, column=10, value=ret_9m)
-        c10.alignment = align_right
-        c10.font = font_data
-        c10.number_format = "+0.00%;-0.00%;0.00%"
-        c10.border = thin_border
-        if row_fill.fill_type: c10.fill = row_fill
-
-        # Col 11: 1M Volatility
-        c11 = ws.cell(row=current_row, column=11, value=vol_1m)
-        c11.alignment = align_right
-        c11.font = font_data
-        c11.number_format = "0.00%"
-        c11.border = thin_border
-        if row_fill.fill_type: c11.fill = row_fill
-
-        # Col 12: 3M Volatility
-        c12 = ws.cell(row=current_row, column=12, value=vol_3m)
-        c12.alignment = align_right
-        c12.font = font_data
-        c12.number_format = "0.00%"
-        c12.border = thin_border
-        if row_fill.fill_type: c12.fill = row_fill
-
-        # Col 13: Quantity
-        c13 = ws.cell(row=current_row, column=13, value=(qty if qty > 0 else "—"))
-        c13.alignment = align_right
-        c13.font = font_data
-        if qty > 0: c13.number_format = "#,##0"
-        c13.border = thin_border
-        if row_fill.fill_type: c13.fill = row_fill
-
-        # Col 14: Allocated Amount
-        c14 = ws.cell(row=current_row, column=14, value=(allocated if allocated > 0 else "—"))
-        c14.alignment = align_right
-        c14.font = font_data
-        if allocated > 0: c14.number_format = "₹#,##0.00"
-        c14.border = thin_border
-        if row_fill.fill_type: c14.fill = row_fill
-
-        # Col 15: Weight %
-        c15 = ws.cell(row=current_row, column=15, value=(weight if weight > 0 else "—"))
-        c15.alignment = align_right
-        c15.font = font_data
-        if weight > 0: c15.number_format = "0.00%"
-        c15.border = thin_border
-        if row_fill.fill_type: c15.fill = row_fill
+        for col_idx, (val, cell_font, num_fmt) in enumerate(row_cells, 1):
+            c = ws.cell(row=current_row, column=col_idx, value=val)
+            c.alignment = columns_spec[col_idx - 1][1]
+            c.font = cell_font
+            if num_fmt:
+                c.number_format = num_fmt
+            c.border = thin_border
+            if row_fill.fill_type:
+                c.fill = row_fill
 
         current_row += 1
 
     # Freeze panes below header (row 7) so headers stay visible on scroll
     ws.freeze_panes = "A7"
 
-    # Auto-adjust column widths with generous padding
-    col_widths = {
-        1: 9,    # RANK
-        2: 17,   # STOCK SYMBOL
-        3: 16,   # PORTFOLIO TIER
-        4: 12,   # ACTION
-        5: 18,   # MOMENTUM SCORE
-        6: 18,   # CLOSING PRICE
-        7: 15,   # 1M RETURN
-        8: 15,   # 2M RETURN
-        9: 15,   # 5M RETURN
-        10: 15,  # 9M RETURN
-        11: 16,  # 1M VOLATILITY
-        12: 16,  # 3M VOLATILITY
-        13: 12,  # QUANTITY
-        14: 19,  # ALLOCATED AMOUNT
-        15: 17,  # PORTFOLIO WEIGHT
-    }
+    # Set widths first, then configure collapsed Start/End column outline groups cleanly
+    for col_idx, (_name, _align, width, _is_detail) in enumerate(columns_spec, 1):
+        ws.column_dimensions[get_column_letter(col_idx)].width = width
 
-    for col_idx, width in col_widths.items():
-        col_letter = get_column_letter(col_idx)
-        ws.column_dimensions[col_letter].width = width
+    collapsed_groups = [
+        (7, 8, 9),     # 1M RETURN -> 1M START, 1M END
+        (10, 11, 12),  # 2M RETURN -> 2M START, 2M END
+        (13, 14, 15),  # 5M RETURN -> 5M START, 5M END
+        (16, 17, 18),  # 9M RETURN -> 9M START, 9M END
+        (19, 20, 21),  # 1M VOLATILITY -> 1M VOL START, 1M VOL END
+        (22, 23, 24),  # 3M VOLATILITY -> 3M VOL START, 3M VOL END
+    ]
+    for parent_idx, start_idx, end_idx in collapsed_groups:
+        ws.column_dimensions[get_column_letter(parent_idx)].collapsed = True
+        for detail_idx in range(start_idx, end_idx + 1):
+            col_dim = ws.column_dimensions[get_column_letter(detail_idx)]
+            col_dim.outlineLevel = 1
+            col_dim.hidden = True
 
     return ws
 
@@ -491,17 +556,71 @@ def export_ranked_stocks_to_bytes(strategy_id, run_index=None, username=None, sc
     If scope == 'current': creates a single-sheet workbook titled with that run (e.g. '#1 Jan 25').
     """
     if str(scope).lower() == "all":
-        data = load_user_momentum_smallcases(username)
-        strat = next((s for s in data.get("strategies", []) if s.get("id") == strategy_id), None)
-        runs = strat.get("runs", []) if strat else []
+        strat = get_user_strategy(strategy_id, username=username)
+        if not strat:
+            raise ValueError(f"Strategy '{strategy_id}' not found")
+        runs = strat.get("runs", [])
         if runs:
+            missing_indices = [
+                idx for idx, r in enumerate(runs)
+                if not (r.get("all_ranked_stocks") and len(r.get("all_ranked_stocks")) > 0)
+            ]
+            needs_window_enrich = any(
+                not all(s.get("windows") for s in (r.get("all_ranked_stocks") or []))
+                for r in runs if r.get("all_ranked_stocks")
+            )
+            constituents = None
+            pending_updates = {}
+            prewarm_syms = set()
+            if missing_indices:
+                constituents = get_strategy_index_constituents(
+                    strat.get("index_id"),
+                    strat.get("index_type", "manual"),
+                    username=username
+                )
+                if not constituents:
+                    raise ValueError(f"No constituents found for index '{strat.get('index_name')}'")
+                prewarm_syms.update(c["symbol"] if isinstance(c, dict) else str(c) for c in constituents)
+
+            if needs_window_enrich:
+                for r in runs:
+                    for s in (r.get("all_ranked_stocks") or []):
+                        if s.get("symbol"):
+                            prewarm_syms.add(str(s["symbol"]).strip().upper())
+
+            if prewarm_syms and (missing_indices or needs_window_enrich):
+                run_dates = [
+                    parse_date_fast(r.get("executed_date") or r.get("scheduled_date"))
+                    for r in runs
+                ]
+                run_dates = [d for d in run_dates if d is not None]
+                if run_dates:
+                    win_min = (min(run_dates) - timedelta(days=450)).isoformat()
+                    win_max = max(run_dates).isoformat()
+                    prewarm_stock_prices_cache(list(prewarm_syms), min_date=win_min, max_date=win_max)
+
             wb = openpyxl.Workbook()
             used_titles = set()
-            for idx, r in enumerate(runs):
-                _, target_run, all_stocks = get_run_all_ranked_stocks(strategy_id, run_index=idx, username=username)
+            for idx, target_run in enumerate(runs):
+                all_stocks = target_run.get("all_ranked_stocks")
+                if not (all_stocks and len(all_stocks) > 0):
+                    all_stocks = _compute_run_all_ranked_stocks(strat, target_run, constituents, username=username)
+                    target_run["all_ranked_stocks"] = all_stocks
+                    pending_updates[idx] = all_stocks
+
+                sheet_stocks = _enrich_ranked_stocks_with_windows(strat, target_run, all_stocks, prewarm=False)
                 ws = wb.active if idx == 0 else wb.create_sheet()
                 st_title = format_run_sheet_title(target_run, idx, used_titles)
-                populate_ranked_stocks_worksheet(ws, strat, target_run, all_stocks, sheet_title=st_title)
+                populate_ranked_stocks_worksheet(ws, strat, target_run, sheet_stocks, sheet_title=st_title)
+
+            if pending_updates:
+                _persist_backfilled_all_ranked(
+                    strategy_id,
+                    pending_updates,
+                    username=username,
+                    runs_list=runs,
+                    runs_externalized=bool(strat.get("runs_externalized")),
+                )
 
             clean_strat_name = re.sub(r'[^a-zA-Z0-9_\-]+', '_', strat.get("name", "Strategy")).strip('_')
             filename = f"Ranked_Stocks_{clean_strat_name}_ALL_RUNS.xlsx"
@@ -511,8 +630,9 @@ def export_ranked_stocks_to_bytes(strategy_id, run_index=None, username=None, sc
             return filename, bio
 
     strategy, run, all_stocks = get_run_all_ranked_stocks(strategy_id, run_index=run_index, username=username)
+    sheet_stocks = _enrich_ranked_stocks_with_windows(strategy, run, all_stocks, prewarm=True)
     sheet_title = format_run_sheet_title(run, run_index)
-    wb = generate_ranked_stocks_workbook(strategy, run, all_stocks, sheet_title=sheet_title)
+    wb = generate_ranked_stocks_workbook(strategy, run, sheet_stocks, sheet_title=sheet_title)
     
     clean_strat_name = re.sub(r'[^a-zA-Z0-9_\-]+', '_', strategy.get("name", "Strategy")).strip('_')
     exec_date = str(run.get("executed_date") or run.get("scheduled_date") or "run")[:10]
@@ -529,7 +649,8 @@ def export_ranked_stocks_to_file(strategy_id, run_index=None, username=None, out
     Saves the Excel workbook to a file path on disk and returns the absolute path.
     """
     strategy, run, all_stocks = get_run_all_ranked_stocks(strategy_id, run_index=run_index, username=username)
-    wb = generate_ranked_stocks_workbook(strategy, run, all_stocks)
+    sheet_stocks = _enrich_ranked_stocks_with_windows(strategy, run, all_stocks, prewarm=True)
+    wb = generate_ranked_stocks_workbook(strategy, run, sheet_stocks)
 
     clean_strat_name = re.sub(r'[^a-zA-Z0-9_\-]+', '_', strategy.get("name", "Strategy")).strip('_')
     exec_date = str(run.get("executed_date") or run.get("scheduled_date") or "run")[:10]

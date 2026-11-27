@@ -543,8 +543,8 @@
             if (dayPnlEl) dayPnlEl.innerHTML = skelVal;
             if (dayPnlPctEl) dayPnlPctEl.innerHTML = skelSub;
 
-            // Put number loader on LTP elements across active portfolio holdings
-            document.querySelectorAll('.pf-mob-ltp-val, .pf-col-ltp, [id^="pf-ltp-"]').forEach(el => {
+            // Put number loader on LTP data cells across active portfolio holdings (never table headers)
+            document.querySelectorAll('.pf-mob-ltp-val, td.pf-col-ltp, [id^="pf-ltp-"]').forEach(el => {
                 el.innerHTML = skelLtp;
             });
 
@@ -566,7 +566,7 @@
                 stopPortfolioSpin();
 
                 // Safety fallback: if skeleton remains in DOM for any reason, re-render cached numbers
-                if (valEl && valEl.querySelector('.skeleton-box')) {
+                if (document.querySelector('#portfolio-view-mount .skeleton-box')) {
                     if (typeof renderPortfolios === 'function') {
                         renderPortfolios();
                     }

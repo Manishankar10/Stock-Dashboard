@@ -9,26 +9,23 @@ Simulates and compares multiple momentum smallcase index universes side-by-side:
 - Evaluates full portfolio milestone series, drawdowns, and KPIs.
 """
 
-import copy
 import logging
-import math
 import re
-import threading
-import uuid
 from datetime import date, datetime
-from concurrent.futures import ThreadPoolExecutor
 
 from modules.momentum_smallcases.momentum_smallcases_calculator import (
     DEFAULT_FORMULA,
-    TRANSACTION_FEE_RATE,
     prewarm_stock_prices_cache,
     clear_db_prices_cache,
     get_stock_closing_prices_from_db,
     get_next_trading_day,
+    get_official_trading_holidays,
     calculate_stock_momentum_metrics,
     evaluate_formula_score,
     execute_init_run,
     execute_rebalance_run,
+    filter_constituents_for_window,
+    parse_date_fast,
 )
 from modules.momentum_smallcases.momentum_smallcases_store import (
     get_strategy_index_constituents,
@@ -80,8 +77,9 @@ def _parse_date_flexible(d_str, default_date=None):
     """Parses date string flexibly supporting YYYY-MM-DD, DD-MM-YYYY, DD/MM/YYYY, etc."""
     if not d_str:
         return default_date or date.today()
-    if isinstance(d_str, (date, datetime)):
-        return d_str if isinstance(d_str, date) else d_str.date()
+    parsed = parse_date_fast(d_str)
+    if parsed is not None:
+        return parsed
     s = str(d_str).strip()
     clean = re.sub(r'[^0-9\-\/\.]', '', s)
     for fmt in ("%Y-%m-%d", "%d-%m-%Y", "%Y/%m/%d", "%d/%m/%Y", "%Y.%m.%d", "%d.%m.%Y"):
@@ -177,7 +175,9 @@ def run_index_comparison_simulation(common_config, index_configs, username=None)
                 constituents = get_strategy_index_constituents(idx_id, fallback_type, username=username) or []
             all_constituents_by_index[idx_id] = constituents
 
-            for c in constituents:
+            # Only prewarm symbols whose [date_added, date_exited) interval overlaps [start_d, cutoff_d]
+            window_constituents = filter_constituents_for_window(constituents, start_d, cutoff_d)
+            for c in window_constituents:
                 if isinstance(c, dict) and c.get("symbol"):
                     all_symbols_to_warm.add(c["symbol"])
                 elif isinstance(c, str):
@@ -189,6 +189,7 @@ def run_index_comparison_simulation(common_config, index_configs, username=None)
             cutoff_needed = cutoff_d.isoformat()
             prewarm_stock_prices_cache(all_symbols_to_warm, min_date=earliest_needed, max_date=cutoff_needed)
 
+        holidays_set = get_official_trading_holidays()
         used_colors = set()
         for i, idx_cfg in enumerate(index_configs):
             if not isinstance(idx_cfg, dict):
@@ -235,7 +236,8 @@ def run_index_comparison_simulation(common_config, index_configs, username=None)
                     formula_str=formula_str,
                     color=color,
                     cfg_id=cfg_id,
-                    stepup_amount=stepup_amount
+                    stepup_amount=stepup_amount,
+                    holidays_set=holidays_set,
                 )
                 if sim_result:
                     results.append(sim_result)
@@ -335,14 +337,18 @@ def _simulate_single_index(
     formula_str,
     color,
     cfg_id,
-    stepup_amount=0.0
+    stepup_amount=0.0,
+    holidays_set=None
 ):
     """
     Simulates portfolio evolution for one index from start_date to cutoff_date.
     Uses ONLY DB data from collection 'stock_closing_prices'.
     """
+    if holidays_set is None:
+        holidays_set = get_official_trading_holidays()
+
     # Determine initial execution date
-    init_d, was_moved = get_next_trading_day(start_date)
+    init_d, was_moved = get_next_trading_day(start_date, holidays_set=holidays_set)
     if init_d > cutoff_date:
         logger.warning(f"Init date {init_d} is after cutoff date {cutoff_date} for index '{index_name}'")
         return None
@@ -362,7 +368,7 @@ def _simulate_single_index(
         earliest_eff = meta_init.get("earliest_effective_date") if meta_init else None
         if earliest_eff and earliest_eff > init_d and earliest_eff <= cutoff_date:
             logger.info(f"Index '{index_name}' constituents entered / have price data after {init_d}; delayed start to {earliest_eff}")
-            delayed_init_d, _ = get_next_trading_day(earliest_eff)
+            delayed_init_d, _ = get_next_trading_day(earliest_eff, holidays_set=holidays_set)
             if delayed_init_d <= cutoff_date:
                 ranked_init, eligible_count, meta_init = _evaluate_universe_db_only(
                     constituents=constituents,
@@ -463,7 +469,7 @@ def _simulate_single_index(
     max_rebal_runs = max(240, year_diff * 14)
 
     while len(rebalance_dates) < max_rebal_runs:
-        _, next_rebal_d, _ = calculate_strategy_next_rebalance(current_sim_date, rebalance_day)
+        _, next_rebal_d, _ = calculate_strategy_next_rebalance(current_sim_date, rebalance_day, holidays_set=holidays_set)
         if not next_rebal_d or next_rebal_d > cutoff_date:
             break
         if rebalance_dates and next_rebal_d <= rebalance_dates[-1]:

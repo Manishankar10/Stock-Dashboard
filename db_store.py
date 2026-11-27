@@ -165,8 +165,8 @@ db = None
 if _MONGO_URI:
     try:
         from pymongo import MongoClient
-        # 5 second timeout so app boots quickly even if Mongo is slow
-        _client = MongoClient(_MONGO_URI, serverSelectionTimeoutMS=5000)
+        # 5 second timeout so app boots quickly even if Mongo is slow; enable zlib wire compression
+        _client = MongoClient(_MONGO_URI, compressors="zlib", serverSelectionTimeoutMS=5000)
         _client.admin.command('ping')
         db = _client.get_database("capital_desk")
         print(" Successfully connected to MongoDB Atlas!")
@@ -1615,7 +1615,7 @@ def load_index_constituents_db(index_key=None):
             if row:
                 stocks = json.loads(row[4]) if row[4] else []
                 meta = json.loads(row[8]) if row[8] else {}
-                return {
+                out = {
                     "index_key": row[0],
                     "index_name": row[1],
                     "symbol": row[2],
@@ -1626,6 +1626,9 @@ def load_index_constituents_db(index_key=None):
                     "last_synced_display": row[7],
                     "metadata": meta
                 }
+                if "_constituent_history" in meta:
+                    out["constituent_history"] = meta.get("_constituent_history") or []
+                return out
         else:
             cursor.execute("SELECT index_key, index_name, symbol, official_size, stocks, total_stocks, last_synced, last_synced_display, metadata FROM index_constituents")
             rows = cursor.fetchall()
@@ -1634,7 +1637,7 @@ def load_index_constituents_db(index_key=None):
                 for row in rows:
                     stocks = json.loads(row[4]) if row[4] else []
                     meta = json.loads(row[8]) if row[8] else {}
-                    res[row[0]] = {
+                    out = {
                         "index_key": row[0],
                         "index_name": row[1],
                         "symbol": row[2],
@@ -1645,6 +1648,9 @@ def load_index_constituents_db(index_key=None):
                         "last_synced_display": row[7],
                         "metadata": meta
                     }
+                    if "_constituent_history" in meta:
+                        out["constituent_history"] = meta.get("_constituent_history") or []
+                    res[row[0]] = out
                 return res
     except Exception as e:
         print(f"SQLite load_index_constituents error: {e}")
@@ -1655,7 +1661,7 @@ def load_index_constituents_db(index_key=None):
     return None
 
 
-def save_index_constituents_db(index_key, index_name, symbol, official_size, stocks, last_synced_iso=None, last_synced_display=None, metadata=None):
+def save_index_constituents_db(index_key, index_name, symbol, official_size, stocks, last_synced_iso=None, last_synced_display=None, metadata=None, constituent_history=None):
     """
     Saves index constituent stocks and telemetry to MongoDB Atlas collection 'index_constituents'
     and SQLite 'index_constituents' table in capital_desk.db.
@@ -1665,7 +1671,7 @@ def save_index_constituents_db(index_key, index_name, symbol, official_size, sto
     last_synced_iso = last_synced_iso or now_utc.isoformat()
     last_synced_display = format_ist_display(last_synced_display)
     total_stocks = len(stocks)
-    metadata = metadata or {}
+    metadata = dict(metadata or {})
     key_str = str(index_key).strip()
 
     doc_data = {
@@ -1680,6 +1686,12 @@ def save_index_constituents_db(index_key, index_name, symbol, official_size, sto
         "metadata": metadata,
         "updated_at": last_synced_iso
     }
+    if constituent_history is not None:
+        doc_data["constituent_history"] = constituent_history
+
+    sqlite_meta = dict(metadata)
+    if constituent_history is not None:
+        sqlite_meta["_constituent_history"] = constituent_history
 
     # 1. MongoDB Atlas
     if db is not None:
@@ -1711,7 +1723,7 @@ def save_index_constituents_db(index_key, index_name, symbol, official_size, sto
                 total_stocks,
                 last_synced_iso,
                 last_synced_display,
-                json.dumps(metadata, ensure_ascii=False)
+                json.dumps(sqlite_meta, ensure_ascii=False)
             )
         )
         conn.commit()
@@ -2038,7 +2050,7 @@ def get_trading_holidays_telemetry_db():
 # STOCK CLOSING PRICES (750 STOCKS 2-YEAR EOD HISTORY & DAILY CLOSES)
 # ==============================================================================
 
-def load_stock_closing_prices_db(symbol=None, symbols=None, summary_only=False, monthly_only=False, slice_prices=None, min_date=None, max_date=None, limit=None):
+def load_stock_closing_prices_db(symbol=None, symbols=None, summary_only=False, monthly_only=False, slice_prices=None, min_date=None, max_date=None, limit=None, include_monthly=True):
     """
     Loads stock closing prices strictly and solely from MongoDB Atlas collection 'stock_closing_prices'.
     SQLite usage is completely deleted per system architecture rules.
@@ -2086,13 +2098,14 @@ def load_stock_closing_prices_db(symbol=None, symbols=None, summary_only=False, 
 
             projection = {
                 "symbol": 1,
-                "company_name": 1,
                 "start_date": 1,
                 "min_date": 1,
                 "latest_date": 1,
-                "monthly_prices": 1,
                 "prices": prices_filter
             }
+            if include_monthly:
+                projection["company_name"] = 1
+                projection["monthly_prices"] = 1
 
             if single_sym:
                 pipeline = [
@@ -2275,6 +2288,156 @@ def save_stock_closing_prices_telemetry_db(telemetry_data):
         col.replace_one({"_id": "global_telemetry"}, mongo_doc, upsert=True)
     except Exception as e:
         print(f"MongoDB save_stock_closing_prices_telemetry error: {e}")
+
+
+_CUSTOM_TRACKED_STOCKS_FILE = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "app_data", "custom_tracked_stocks.json"
+)
+
+
+def load_custom_tracked_stocks_db(active_only=False):
+    """
+    Loads custom/extra tracked stocks (from manual indices & exited 750 stocks)
+    from MongoDB collection 'custom_tracked_stocks' with local JSON fallback.
+    Returns dict keyed by uppercase symbol.
+    """
+    query = {"sync_active": {"$ne": False}} if active_only else {}
+    if db is not None:
+        try:
+            col = db["custom_tracked_stocks"]
+            docs = list(col.find(query))
+            res = {}
+            for d in docs:
+                sym = str(d.get("symbol") or d.get("_id") or "").strip().upper()
+                if sym:
+                    d.pop("_id", None)
+                    d["symbol"] = sym
+                    res[sym] = d
+            return res
+        except Exception as e:
+            print(f"MongoDB load_custom_tracked_stocks error: {e}")
+
+    if os.path.exists(_CUSTOM_TRACKED_STOCKS_FILE):
+        try:
+            with open(_CUSTOM_TRACKED_STOCKS_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f) or {}
+            if active_only:
+                return {k: v for k, v in data.items() if v.get("sync_active", True) is not False}
+            return data
+        except Exception:
+            pass
+    return {}
+
+
+def upsert_custom_tracked_stocks_db(entries):
+    """
+    Upserts custom/exited non-index stock tracking records into MongoDB 'custom_tracked_stocks'
+    without removing existing sources or manual index references.
+    """
+    if not entries:
+        return {"success": True, "count": 0}
+    if isinstance(entries, dict):
+        entries = [entries]
+
+    now_iso = now_ist().isoformat()
+    cleaned = []
+    for item in entries:
+        sym = str(item.get("symbol") or "").strip().upper()
+        if not sym:
+            continue
+        cname = str(item.get("company_name") or sym).strip()
+        source = str(item.get("source") or "").strip()
+        sources = [str(x).strip() for x in (item.get("sources") or []) if str(x).strip()]
+        if source and source not in sources:
+            sources.append(source)
+        manual_ids = [str(x).strip() for x in (item.get("manual_index_ids") or []) if str(x).strip()]
+        exited_from = list(item.get("exited_from") or [])
+        sync_active = item.get("sync_active", True) is not False
+        status = str(item.get("status") or "ACTIVE").strip().upper()
+        cleaned.append({
+            "symbol": sym,
+            "company_name": cname,
+            "sources": sources,
+            "manual_index_ids": manual_ids,
+            "exited_from": exited_from,
+            "sync_active": sync_active,
+            "status": status,
+        })
+
+    if not cleaned:
+        return {"success": True, "count": 0}
+
+    if db is not None:
+        try:
+            from pymongo import UpdateOne
+            col = db["custom_tracked_stocks"]
+            ops = []
+            for r in cleaned:
+                sym = r["symbol"]
+                set_doc = {
+                    "symbol": sym,
+                    "sync_active": r["sync_active"],
+                    "status": r["status"],
+                    "updated_at": now_iso,
+                }
+                if r["company_name"] and r["company_name"] != sym:
+                    set_doc["company_name"] = r["company_name"]
+                update_op = {
+                    "$set": set_doc,
+                    "$setOnInsert": {"_id": sym, "created_at": now_iso},
+                }
+                add_to_set = {}
+                if r["sources"]:
+                    add_to_set["sources"] = {"$each": r["sources"]}
+                if r["manual_index_ids"]:
+                    add_to_set["manual_index_ids"] = {"$each": r["manual_index_ids"]}
+                if r["exited_from"]:
+                    add_to_set["exited_from"] = {"$each": r["exited_from"]}
+                if add_to_set:
+                    update_op["$addToSet"] = add_to_set
+                ops.append(UpdateOne({"_id": sym}, update_op, upsert=True))
+            if ops:
+                col.bulk_write(ops, ordered=False)
+            return {"success": True, "count": len(ops)}
+        except Exception as e:
+            print(f"MongoDB upsert_custom_tracked_stocks error: {e}")
+
+    # Local JSON fallback
+    data = {}
+    if os.path.exists(_CUSTOM_TRACKED_STOCKS_FILE):
+        try:
+            with open(_CUSTOM_TRACKED_STOCKS_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f) or {}
+        except Exception:
+            data = {}
+    for r in cleaned:
+        sym = r["symbol"]
+        cur = data.get(sym, {"symbol": sym, "created_at": now_iso, "sources": [], "manual_index_ids": [], "exited_from": []})
+        if r["company_name"] and r["company_name"] != sym:
+            cur["company_name"] = r["company_name"]
+        else:
+            cur.setdefault("company_name", r["company_name"])
+        for s in r["sources"]:
+            if s not in cur["sources"]:
+                cur["sources"].append(s)
+        for mid in r["manual_index_ids"]:
+            if mid not in cur["manual_index_ids"]:
+                cur["manual_index_ids"].append(mid)
+        for ex in r["exited_from"]:
+            if ex not in cur["exited_from"]:
+                cur["exited_from"].append(ex)
+        cur["sync_active"] = r["sync_active"]
+        cur["status"] = r["status"]
+        cur["updated_at"] = now_iso
+        data[sym] = cur
+    try:
+        os.makedirs(os.path.dirname(_CUSTOM_TRACKED_STOCKS_FILE), exist_ok=True)
+        with open(_CUSTOM_TRACKED_STOCKS_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+    except Exception:
+        pass
+    return {"success": True, "count": len(cleaned)}
+
 
 
 

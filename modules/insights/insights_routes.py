@@ -97,24 +97,94 @@ def _save_fiidii_to_disk(data):
     except Exception as e:
         print(f"[Insights] Error saving fiidii_latest.json: {e}")
 
+def _get_fii_dii_holidays():
+    try:
+        from modules.trading_holidays.trading_holidays_provider import get_official_trading_holidays
+        return set(get_official_trading_holidays() or ())
+    except Exception:
+        return set()
+
+
+def _expected_latest_fii_dii_session(ist_now):
+    """
+    Returns the most recent NSE trading date expected to have published FII/DII figures:
+    - Mon..Fri at/after 18:00 IST (non-holiday): today
+    - Mon..Fri before 18:00 IST, or weekends / holidays: most recent prior trading day
+    """
+    holidays = _get_fii_dii_holidays()
+    today_d = ist_now.date()
+    minute_of_day = ist_now.hour * 60 + ist_now.minute
+    is_trading_today = (today_d.weekday() < 5) and (today_d.isoformat() not in holidays)
+    if is_trading_today and minute_of_day >= (18 * 60):
+        return today_d
+
+    cand = today_d - datetime.timedelta(days=1)
+    for _ in range(15):
+        if cand.weekday() < 5 and cand.isoformat() not in holidays:
+            return cand
+        cand -= datetime.timedelta(days=1)
+    return today_d - datetime.timedelta(days=1)
+
+
+def _format_fii_dii_display(trade_dt, ist_now):
+    today_d = ist_now.date()
+    yesterday_d = today_d - datetime.timedelta(days=1)
+    if trade_dt == today_d:
+        return f"{trade_dt.strftime('%d %b %Y')} (Today)", True
+    if trade_dt == yesterday_d:
+        return f"{trade_dt.strftime('%d %b %Y')} (Yesterday)", False
+    return f"{trade_dt.strftime('%d %b %Y')} (Latest Session)", False
+
+
+def _refresh_cached_fii_dii_labels(entry, ist_now, expected_session_date):
+    if not isinstance(entry, dict):
+        return entry
+    trade_iso = entry.get("trade_date_iso")
+    trade_dt = None
+    if trade_iso:
+        try:
+            trade_dt = datetime.datetime.strptime(str(trade_iso)[:10], "%Y-%m-%d").date()
+        except ValueError:
+            trade_dt = None
+    if trade_dt is not None:
+        disp, is_today = _format_fii_dii_display(trade_dt, ist_now)
+        entry["date"] = disp
+        entry["is_today"] = is_today
+
+    weekday = ist_now.weekday()
+    minute_of_day = ist_now.hour * 60 + ist_now.minute
+    is_up_to_date = bool(trade_dt and trade_dt >= expected_session_date)
+    entry["is_frozen"] = bool(entry.get("is_today")) or (minute_of_day < 18 * 60 and is_up_to_date) or (weekday >= 5 and is_up_to_date)
+    if entry.get("is_today"):
+        entry["status_label"] = "Today's Official Provisional Data"
+    elif weekday >= 5 and is_up_to_date:
+        entry["status_label"] = "Weekend (Market Closed)"
+    elif minute_of_day < 18 * 60:
+        entry["status_label"] = "Latest Official Session (Updates after 6:00 PM)"
+    else:
+        entry["status_label"] = "Awaiting Today's NSE Provisional Update"
+    return entry
+
+
 def fetch_fii_dii_data(force_refresh=False):
     """
     Schedule-aware Provisional FII/FPI and DII Trading Activity:
-    - Official provisional data published by NSE only once per trading day after 6:00 PM IST (typically ~6:15 - 6:30 PM).
-    - Weekdays before 6:00 PM IST: Today's data not published yet; yesterday's finalized session is served with ZERO network calls.
-    - Weekends: NSE closed. Friday's finalized session is frozen with ZERO network calls.
-    - Weekdays 6:00 PM - 7:30 PM IST: Discovery window. Checks NSE (with 5-min cooldown) until today's data is received.
-    - Once today's data is captured: 100% FROZEN until tomorrow 6:00 PM IST.
+    - Official provisional data published by NSE once per trading day after 6:00 PM IST.
+    - Before 6:00 PM IST on weekdays (or on weekends), only freezes cache when cached
+      trade_date_iso already covers the latest completed trading session; otherwise fetches
+      the latest published session so stale multi-day disk caches auto-refresh.
+    - Once today's provisional data is captured after 6:00 PM IST: frozen until next session.
     """
     global _FIIDII_STATE
     now_ts = time.time()
     ist_now = now_ist()
     today_date = ist_now.date()
     today_iso = today_date.strftime('%Y-%m-%d')
-    yesterday_date = today_date - datetime.timedelta(days=1)
     weekday = ist_now.weekday()
     minute_of_day = ist_now.hour * 60 + ist_now.minute
     time_6pm = 18 * 60  # 18:00 IST (1080 min)
+    expected_session_date = _expected_latest_fii_dii_session(ist_now)
+    expected_session_iso = expected_session_date.strftime('%Y-%m-%d')
 
     # 1. Restore from disk if memory cache is empty
     if _FIIDII_STATE["data"] is None:
@@ -124,33 +194,19 @@ def fetch_fii_dii_data(force_refresh=False):
 
     cached = _FIIDII_STATE["data"]
 
-    # 2. Schedule-aware evaluation
+    # 2. Schedule-aware evaluation (never freeze stale data behind expected_session_iso)
     if not force_refresh and cached:
         cached_trade_date = cached.get("trade_date_iso")
-        is_today_data = (cached_trade_date == today_iso) or ("(Today)" in str(cached.get("date", "")))
+        is_up_to_date = bool(cached_trade_date and str(cached_trade_date)[:10] >= expected_session_iso)
 
-        # Case A: Weekend (Sat/Sun) - NSE closed. Return cached Friday data.
-        if weekday >= 5:
-            cached["is_frozen"] = True
-            cached["status_label"] = "Weekend (Market Closed)"
+        if is_up_to_date:
+            _refresh_cached_fii_dii_labels(cached, ist_now, expected_session_date)
             return cached
 
-        # Case B: Weekday before 6:00 PM IST - Today's provisional figures not published yet.
-        if minute_of_day < time_6pm:
-            cached["is_frozen"] = True
-            cached["status_label"] = "Latest Official Session (Updates after 6:00 PM)"
-            return cached
-
-        # Case C: Weekday after 6:00 PM IST, and today's data has ALREADY been captured!
-        if is_today_data:
-            cached["is_frozen"] = True
-            cached["status_label"] = "Today's Official Provisional Data"
-            return cached
-
-        # Case D: Weekday after 6:00 PM IST, but today's data not yet in cache.
-        # Apply cooldown (5 mins between 6:00-7:30 PM, 15 mins after 7:30 PM)
-        cooldown_sec = 300 if minute_of_day < (19 * 60 + 30) else 900
+        # Latest expected trading session not cached yet: fetch with brief retry cooldown
+        cooldown_sec = 300 if (weekday < 5 and time_6pm <= minute_of_day < (19 * 60 + 30)) else 900
         if (now_ts - _FIIDII_STATE.get("last_attempt", 0)) < cooldown_sec:
+            _refresh_cached_fii_dii_labels(cached, ist_now, expected_session_date)
             return cached
 
     _FIIDII_STATE["last_attempt"] = now_ts
@@ -214,13 +270,7 @@ def fetch_fii_dii_data(force_refresh=False):
                         try:
                             dt = datetime.datetime.strptime(date_str, fmt).date()
                             trade_date_iso = dt.strftime('%Y-%m-%d')
-                            if dt == today_date:
-                                date_display = f"{dt.strftime('%d %b %Y')} (Today)"
-                                is_today = True
-                            elif dt == yesterday_date:
-                                date_display = f"{dt.strftime('%d %b %Y')} (Yesterday)"
-                            else:
-                                date_display = f"{dt.strftime('%d %b %Y')} (Latest Session)"
+                            date_display, is_today = _format_fii_dii_display(dt, ist_now)
                             break
                         except ValueError:
                             pass
@@ -246,6 +296,7 @@ def fetch_fii_dii_data(force_refresh=False):
                     "source": "NSE Official",
                     "headline": f"FIIs: {fii_prefix}₹{fii_net:,.2f} Cr | DIIs: {dii_prefix}₹{dii_net:,.2f} Cr"
                 }
+                _refresh_cached_fii_dii_labels(res, ist_now, expected_session_date)
                 _FIIDII_STATE["data"] = res
                 _FIIDII_STATE["last_success"] = time.time()
                 _save_fiidii_to_disk(res)
@@ -258,8 +309,6 @@ def fetch_fii_dii_data(force_refresh=False):
     # SECONDARY BACKUP: Economic Times FII/DII Table
     # =========================================================
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
-    today_str = ist_now.strftime('%d %b')
-    yest_str = (ist_now - datetime.timedelta(days=1)).strftime('%d %b')
     try:
         url = 'https://economictimes.indiatimes.com/markets/fii-dii-activity'
         r = requests.get(url, headers=headers, timeout=6)
@@ -280,22 +329,36 @@ def fetch_fii_dii_data(force_refresh=False):
                         fii_val = float(cols[0].replace(',', ''))
                         dii_val = float(cols[1].replace(',', ''))
                         d_str = dates[idx] if idx < len(dates) else ''
-                        
-                        is_today = bool(d_str and d_str.lower() == today_str.lower())
-                        date_display = d_str if d_str else 'Latest Session'
-                        if is_today:
-                            date_display = f'{d_str} (Today)'
-                        elif d_str and d_str.lower() == yest_str.lower():
-                            date_display = f'{d_str} (Yesterday)'
-                        elif d_str:
-                            date_display = f'{d_str} (Latest Session)'
+
+                        parsed_et_dt = None
+                        if d_str:
+                            for fmt in ('%d %b %Y', '%d-%b-%Y', '%d %b'):
+                                try:
+                                    dt_tmp = datetime.datetime.strptime(d_str, fmt).date()
+                                    if '%Y' not in fmt:
+                                        yr = today_date.year
+                                        dt_tmp = dt_tmp.replace(year=yr)
+                                        if dt_tmp > today_date + datetime.timedelta(days=5):
+                                            dt_tmp = dt_tmp.replace(year=yr - 1)
+                                    parsed_et_dt = dt_tmp
+                                    break
+                                except ValueError:
+                                    pass
+
+                        if parsed_et_dt is not None:
+                            trade_date_iso = parsed_et_dt.strftime('%Y-%m-%d')
+                            date_display, is_today = _format_fii_dii_display(parsed_et_dt, ist_now)
+                        else:
+                            trade_date_iso = None
+                            is_today = False
+                            date_display = d_str or 'Latest Session'
 
                         fii_prefix = '+' if fii_val >= 0 else ''
                         dii_prefix = '+' if dii_val >= 0 else ''
 
                         res = {
                             "date": date_display,
-                            "trade_date_iso": today_iso if is_today else None,
+                            "trade_date_iso": trade_date_iso,
                             "is_today": is_today,
                             "is_frozen": is_today or (minute_of_day < time_6pm) or (weekday >= 5),
                             "status_label": "Today's Official Provisional Data" if is_today else "Latest Official Session (Updates after 6:00 PM)",
@@ -307,6 +370,7 @@ def fetch_fii_dii_data(force_refresh=False):
                             "source": "ET Backup",
                             "headline": f"FIIs: {fii_prefix}₹{fii_val:,.2f} Cr | DIIs: {dii_prefix}₹{dii_val:,.2f} Cr"
                         }
+                        _refresh_cached_fii_dii_labels(res, ist_now, expected_session_date)
                         _FIIDII_STATE["data"] = res
                         _FIIDII_STATE["last_success"] = time.time()
                         _save_fiidii_to_disk(res)
@@ -345,23 +409,18 @@ def fetch_fii_dii_data(force_refresh=False):
                         
                         date_display = "Latest Session"
                         is_today = False
+                        parsed_news_iso = None
                         if pub_date_str:
                             try:
                                 dt = datetime.datetime.strptime(pub_date_str[:16], '%a, %d %b %Y')
-                                now_utc = datetime.datetime.now(datetime.timezone.utc).date()
-                                if dt.date() == now_utc:
-                                    date_display = dt.strftime('%d %b %Y (Today)')
-                                    is_today = True
-                                elif dt.date() == now_utc - datetime.timedelta(days=1):
-                                    date_display = dt.strftime('%d %b %Y (Yesterday)')
-                                else:
-                                    date_display = dt.strftime('%d %b %Y')
+                                parsed_news_iso = dt.strftime('%Y-%m-%d')
+                                date_display, is_today = _format_fii_dii_display(dt.date(), ist_now)
                             except Exception:
                                 date_display = pub_date_str[:11]
                                 
                         res = {
                             "date": date_display,
-                            "trade_date_iso": today_iso if is_today else None,
+                            "trade_date_iso": parsed_news_iso,
                             "is_today": is_today,
                             "is_frozen": is_today or (minute_of_day < time_6pm) or (weekday >= 5),
                             "status_label": "Today's Official Provisional Data" if is_today else "Latest Official Session (Updates after 6:00 PM)",
@@ -373,6 +432,7 @@ def fetch_fii_dii_data(force_refresh=False):
                             "source": "News Backup",
                             "headline": t
                         }
+                        _refresh_cached_fii_dii_labels(res, ist_now, expected_session_date)
                         _FIIDII_STATE["data"] = res
                         _FIIDII_STATE["last_success"] = time.time()
                         _save_fiidii_to_disk(res)
@@ -385,14 +445,14 @@ def fetch_fii_dii_data(force_refresh=False):
     # QUATERNARY BACKUP: Return previous cached or disk result if available
     # =========================================================
     if _FIIDII_STATE.get("data"):
-        return _FIIDII_STATE["data"]
+        return _refresh_cached_fii_dii_labels(_FIIDII_STATE["data"], ist_now, expected_session_date)
     disk_data = _load_fiidii_from_disk()
     if disk_data:
         _FIIDII_STATE["data"] = disk_data
-        return disk_data
+        return _refresh_cached_fii_dii_labels(disk_data, ist_now, expected_session_date)
     stale = fiidii_cache.get_expired_fallback("fii_dii")
     if stale:
-        return stale
+        return _refresh_cached_fii_dii_labels(stale, ist_now, expected_session_date)
 
     # Baseline active fallback
     fallback_date = ist_now.strftime('%d %b %Y (Latest Session)')

@@ -13,9 +13,13 @@ import os
 import math
 import re
 import json
+import time as _time_mod
+import bisect
+import calendar
 import logging
 from datetime import datetime, date, time, timedelta
 from concurrent.futures import ThreadPoolExecutor
+from modules.common.ist_datetime import now_ist
 
 logger = logging.getLogger(__name__)
 
@@ -107,10 +111,68 @@ def save_price_cache():
 # DATABASE COLLECTION: stock_closing_prices (PRIMARY PRICE SOURCE WITH CACHE)
 # ==============================================================================
 _db_prices_cache = {}
+_db_prices_parsed_cache = {}
 _db_prices_range_cache = {}
+_db_known_symbols = set()
 _db_cache_lock = threading.Lock()
 _earliest_price_cache = {}
 _earliest_price_lock = threading.Lock()
+
+_SYMBOL_ALIAS_MAP = {'TATAMOTORS': 'TMPV', 'HDFC': 'HDFCBANK'}
+_FALLBACK_DATE_FMTS = ("%Y-%m-%d", "%d-%b-%Y", "%d-%m-%Y", "%Y/%m/%d", "%d/%m/%Y")
+
+
+def parse_date_fast(val, fallback=None):
+    """Fast ISO-first date parser returning datetime.date (or fallback on failure)."""
+    if val is None or val == "":
+        return fallback
+    if isinstance(val, datetime):
+        return val.date()
+    if isinstance(val, date):
+        return val
+    s = str(val).strip()
+    if not s:
+        return fallback
+    head = s[:10]
+    if len(head) == 10 and head[4] == "-" and head[7] == "-":
+        try:
+            return date.fromisoformat(head)
+        except ValueError:
+            pass
+    for fmt in _FALLBACK_DATE_FMTS:
+        try:
+            return datetime.strptime(s[:11] if fmt == "%d-%b-%Y" else head, fmt).date()
+        except ValueError:
+            continue
+    return fallback
+
+
+def _normalize_stock_symbol(symbol, apply_alias=True):
+    """Normalizes NSE ticker string and optionally maps corporate symbol aliases."""
+    clean_s = str(symbol or "").strip().upper().replace('.NS', '').replace('.BO', '')
+    if apply_alias:
+        return _SYMBOL_ALIAS_MAP.get(clean_s, clean_s)
+    return clean_s
+
+
+def _build_parsed_arrays_from_series(series):
+    """Converts sorted [(date_str_or_date, close), ...] into parallel ([date], [float]) lists."""
+    dates_out = []
+    prices_out = []
+    for d_val, p_val in series:
+        d_obj = d_val if (isinstance(d_val, date) and not isinstance(d_val, datetime)) else parse_date_fast(d_val)
+        if d_obj is None:
+            continue
+        dates_out.append(d_obj)
+        prices_out.append(float(p_val))
+    return (dates_out, prices_out)
+
+
+def _store_db_series_locked(sym, series, range_tuple):
+    """Stores string-keyed and pre-parsed (date, float) arrays under _db_cache_lock."""
+    _db_prices_cache[sym] = series
+    _db_prices_parsed_cache[sym] = _build_parsed_arrays_from_series(series)
+    _db_prices_range_cache[sym] = range_tuple
 
 
 def _is_range_covered(cached_range, req_min, req_max):
@@ -133,39 +195,103 @@ def _is_range_covered(cached_range, req_min, req_max):
     return True
 
 
+def _batch_load_earliest_dates(symbols):
+    """Loads missing earliest start_date metadata from MongoDB in one projected query."""
+    if not symbols:
+        return
+    clean_fetch_map = {}
+    for s in symbols:
+        if not s:
+            continue
+        fetch_sym = _normalize_stock_symbol(s, apply_alias=True)
+        clean_fetch_map[fetch_sym] = True
+
+    with _earliest_price_lock:
+        missing = [sym for sym in clean_fetch_map if sym not in _earliest_price_cache]
+    if not missing:
+        return
+
+    still_missing = []
+    with _db_cache_lock:
+        for sym in missing:
+            parsed = _db_prices_parsed_cache.get(sym)
+            if parsed and parsed[0]:
+                with _earliest_price_lock:
+                    _earliest_price_cache[sym] = parsed[0][0]
+            elif sym in _db_prices_cache and _db_prices_cache[sym]:
+                first_d = parse_date_fast(_db_prices_cache[sym][0][0])
+                if first_d:
+                    with _earliest_price_lock:
+                        _earliest_price_cache[sym] = first_d
+                else:
+                    still_missing.append(sym)
+            else:
+                still_missing.append(sym)
+
+    if not still_missing:
+        return
+
+    try:
+        import db_store
+        if db_store.db is not None:
+            col = db_store.db["stock_closing_prices"]
+            cursor = col.find(
+                {"_id": {"$in": still_missing}},
+                {"start_date": 1, "min_date": 1}
+            )
+            with _earliest_price_lock:
+                for doc in cursor:
+                    sym = str(doc.get("_id") or "").strip().upper()
+                    s_date = doc.get("start_date") or doc.get("min_date")
+                    first_d = parse_date_fast(s_date)
+                    if sym and first_d:
+                        _earliest_price_cache[sym] = first_d
+            return
+    except Exception as e:
+        logger.debug(f"Batch earliest date load fallback for {len(still_missing)} symbols: {e}")
+
+
 def get_stock_earliest_price_date(symbol):
     """
     Returns datetime.date representing the earliest available price date for symbol.
     Checks in-memory price cache first, then MongoDB Atlas collection 'stock_closing_prices'.
     """
-    clean_s = symbol.strip().upper().replace('.NS', '').replace('.BO', '')
-    alias_map = {'TATAMOTORS': 'TMPV', 'HDFC': 'HDFCBANK'}
-    fetch_sym = alias_map.get(clean_s, clean_s)
+    fetch_sym = _normalize_stock_symbol(symbol, apply_alias=True)
 
     with _earliest_price_lock:
         if fetch_sym in _earliest_price_cache:
             return _earliest_price_cache[fetch_sym]
 
-    # Check _db_prices_cache
+    # Check _db_prices_parsed_cache / _db_prices_cache
     with _db_cache_lock:
+        parsed = _db_prices_parsed_cache.get(fetch_sym)
+        if parsed and parsed[0]:
+            first_d = parsed[0][0]
+            with _earliest_price_lock:
+                _earliest_price_cache[fetch_sym] = first_d
+            return first_d
         if fetch_sym in _db_prices_cache and _db_prices_cache[fetch_sym]:
-            first_d_str = _db_prices_cache[fetch_sym][0][0]
-            try:
-                first_d = datetime.strptime(first_d_str[:10], "%Y-%m-%d").date()
+            first_d = parse_date_fast(_db_prices_cache[fetch_sym][0][0])
+            if first_d:
                 with _earliest_price_lock:
                     _earliest_price_cache[fetch_sym] = first_d
                 return first_d
-            except Exception:
-                pass
 
-    # Check MongoDB collection stock_closing_prices
+    # Check MongoDB collection stock_closing_prices (strictly projecting metadata only)
     try:
-        from db_store import load_stock_closing_prices_db
-        doc = load_stock_closing_prices_db(symbol=fetch_sym, summary_only=True)
+        import db_store
+        doc = None
+        if db_store.db is not None:
+            doc = db_store.db["stock_closing_prices"].find_one(
+                {"_id": fetch_sym},
+                {"start_date": 1, "min_date": 1}
+            )
+        else:
+            doc = db_store.load_stock_closing_prices_db(symbol=fetch_sym, summary_only=True)
         if doc:
             s_date = doc.get("start_date") or doc.get("min_date")
-            if s_date:
-                first_d = datetime.strptime(str(s_date)[:10], "%Y-%m-%d").date()
+            first_d = parse_date_fast(s_date)
+            if first_d:
                 with _earliest_price_lock:
                     _earliest_price_cache[fetch_sym] = first_d
                 return first_d
@@ -175,49 +301,87 @@ def get_stock_earliest_price_date(symbol):
     return None
 
 
+def _get_cached_db_arrays(fetch_sym, target_cutoff_date=None, min_date=None):
+    """
+    Fast O(log N) lookup returning (dates_list, prices_list) from in-memory DB cache
+    if already cached for the required lookback window, else None.
+    """
+    cutoff_d = parse_date_fast(target_cutoff_date) if target_cutoff_date else None
+    cutoff_str = cutoff_d.isoformat() if cutoff_d else (str(target_cutoff_date)[:10] if target_cutoff_date else None)
+    if min_date:
+        lb_min = str(min_date)[:10]
+    else:
+        lb_min = (cutoff_d - timedelta(days=400)).isoformat() if cutoff_d else cutoff_str
+
+    with _db_cache_lock:
+        if fetch_sym not in _db_prices_cache:
+            return None
+        cached_range = _db_prices_range_cache.get(fetch_sym)
+        if cutoff_str:
+            range_ok = (cached_range is None) or _is_range_covered(cached_range, lb_min, cutoff_str)
+        else:
+            range_ok = (cached_range is None) or (cached_range == (None, None))
+        if not range_ok:
+            return None
+
+        parsed = _db_prices_parsed_cache.get(fetch_sym)
+        if parsed is None:
+            raw_series = _db_prices_cache.get(fetch_sym) or []
+            parsed = _build_parsed_arrays_from_series(raw_series)
+            _db_prices_parsed_cache[fetch_sym] = parsed
+
+        dates_arr, prices_arr = parsed
+        if not dates_arr:
+            return ([], []) if fetch_sym in _db_known_symbols else None
+        if cutoff_d is None:
+            return dates_arr, prices_arr
+        pos = bisect.bisect_right(dates_arr, cutoff_d)
+        return dates_arr[:pos], prices_arr[:pos]
+
+
 def get_stock_closing_prices_from_db(symbol, target_cutoff_str=None):
     """
     Fetches historical daily price series from database collection 'stock_closing_prices'.
     Uses an in-memory cache to make repeated lookups sub-millisecond.
-    Returns list of (date_str, close_price) or None if stock or price not available.
+    Returns:
+      - list of (date_str, close_price) if bars exist <= target_cutoff_str
+      - [] (empty list) if the symbol exists in DB but has no bars <= target_cutoff_str (e.g. later IPO)
+      - None if the symbol is missing from DB (allows external live fallback)
     """
-    clean_sym = symbol.strip().upper().replace('.NS', '').replace('.BO', '')
-    alias_map = {'TATAMOTORS': 'TMPV', 'HDFC': 'HDFCBANK'}
-    fetch_sym = alias_map.get(clean_sym, clean_sym)
+    fetch_sym = _normalize_stock_symbol(symbol, apply_alias=True)
 
     # 1. Check in-memory cache (verify cached range covers lookback + target_cutoff_str)
     with _db_cache_lock:
         if fetch_sym in _db_prices_cache:
             cached_range = _db_prices_range_cache.get(fetch_sym)
             if target_cutoff_str:
-                try:
-                    c_dt = datetime.strptime(target_cutoff_str[:10], "%Y-%m-%d").date()
-                    lb_min = (c_dt - timedelta(days=400)).isoformat()
-                except Exception:
-                    lb_min = target_cutoff_str[:10]
-                range_ok = (cached_range is None) or _is_range_covered(cached_range, lb_min, target_cutoff_str[:10])
+                c_dt = parse_date_fast(target_cutoff_str)
+                lb_min = (c_dt - timedelta(days=400)).isoformat() if c_dt else str(target_cutoff_str)[:10]
+                range_ok = (cached_range is None) or _is_range_covered(cached_range, lb_min, str(target_cutoff_str)[:10])
             else:
                 range_ok = (cached_range is None) or (cached_range == (None, None))
             if range_ok:
                 series = _db_prices_cache[fetch_sym]
-                if series and len(series) > 0:
+                if series:
                     if not target_cutoff_str:
                         return series
                     # Binary search for rightmost index where date <= target_cutoff_str
                     lo, hi = 0, len(series)
+                    cutoff_key = str(target_cutoff_str)[:10]
                     while lo < hi:
                         mid = (lo + hi) // 2
-                        if series[mid][0] <= target_cutoff_str:
+                        if series[mid][0] <= cutoff_key:
                             lo = mid + 1
                         else:
                             hi = mid
                     return series[:lo]
+                if fetch_sym in _db_known_symbols:
+                    return []
 
     # 2. Query database collection stock_closing_prices
     try:
         from db_store import load_stock_closing_prices_db
-        from modules.stock_closing_prices.stock_closing_prices_provider import compute_stock_monthly_prices
-        doc = load_stock_closing_prices_db(symbol=fetch_sym, max_date=target_cutoff_str)
+        doc = load_stock_closing_prices_db(symbol=fetch_sym, max_date=target_cutoff_str, include_monthly=False)
         if doc:
             series_dict = {}
             # Priority 1: Exact daily closing prices from DB
@@ -237,28 +401,34 @@ def get_stock_closing_prices_from_db(symbol, target_cutoff_str=None):
                         series_dict[f"{m}-01"] = round(float(fc), 2)
 
             series = [(d, series_dict[d]) for d in sorted(series_dict.keys())]
-            if series:
-                with _db_cache_lock:
-                    _db_prices_cache[fetch_sym] = series
-                    _db_prices_range_cache[fetch_sym] = (None, target_cutoff_str[:10] if target_cutoff_str else None)
+            with _db_cache_lock:
+                _db_known_symbols.add(fetch_sym)
+                _store_db_series_locked(
+                    fetch_sym,
+                    series,
+                    (None, str(target_cutoff_str)[:10] if target_cutoff_str else None)
+                )
 
-                try:
-                    first_d = datetime.strptime(series[0][0][:10], "%Y-%m-%d").date()
-                    with _earliest_price_lock:
-                        _earliest_price_cache[fetch_sym] = first_d
-                except Exception:
-                    pass
+            s_date = doc.get("start_date") or doc.get("min_date")
+            first_d = parse_date_fast(s_date or (series[0][0] if series else None))
+            if first_d:
+                with _earliest_price_lock:
+                    _earliest_price_cache[fetch_sym] = first_d
 
-                if not target_cutoff_str:
-                    return series
-                lo, hi = 0, len(series)
-                while lo < hi:
-                    mid = (lo + hi) // 2
-                    if series[mid][0] <= target_cutoff_str:
-                        lo = mid + 1
-                    else:
-                        hi = mid
-                return series[:lo]
+            if not series:
+                return []
+
+            if not target_cutoff_str:
+                return series
+            lo, hi = 0, len(series)
+            cutoff_key = str(target_cutoff_str)[:10]
+            while lo < hi:
+                mid = (lo + hi) // 2
+                if series[mid][0] <= cutoff_key:
+                    lo = mid + 1
+                else:
+                    hi = mid
+            return series[:lo]
     except Exception as e:
         logger.warning(f"Error querying stock_closing_prices from DB for {fetch_sym}: {e}")
 
@@ -269,7 +439,9 @@ def clear_db_prices_cache():
     """Clears temporary in-memory prices cache to ensure zero server-side memory retention."""
     with _db_cache_lock:
         _db_prices_cache.clear()
+        _db_prices_parsed_cache.clear()
         _db_prices_range_cache.clear()
+        _db_known_symbols.clear()
     with _earliest_price_lock:
         _earliest_price_cache.clear()
 
@@ -278,28 +450,24 @@ def prewarm_stock_prices_cache(symbols=None, min_date=None, max_date=None):
     """
     Pre-warms the in-memory cache from database collection 'stock_closing_prices'.
     Pattern 2: Uses MongoDB server-side $filter projection to fetch only the requested
-    date window of daily prices, delivering pin-point daily accuracy with zero timeouts.
+    date window of daily prices, excluding unused monthly_prices for fast bulk loads.
     """
     try:
         from db_store import load_stock_closing_prices_db
-        from modules.stock_closing_prices.stock_closing_prices_provider import compute_stock_monthly_prices
         req_min = str(min_date)[:10] if min_date else None
         req_max = str(max_date)[:10] if max_date else None
         target_syms = None
         if symbols:
             with _db_cache_lock:
-                target_syms = [
-                    s.strip().upper().replace('.NS', '').replace('.BO', '')
-                    for s in symbols
-                    if s and (
-                        s.strip().upper().replace('.NS', '').replace('.BO', '') not in _db_prices_cache
-                        or not _is_range_covered(
-                            _db_prices_range_cache.get(s.strip().upper().replace('.NS', '').replace('.BO', '')),
-                            req_min,
-                            req_max
-                        )
-                    )
-                ]
+                target_syms = []
+                for s in symbols:
+                    if not s:
+                        continue
+                    clean_s = _normalize_stock_symbol(s, apply_alias=True)
+                    if clean_s not in _db_prices_cache or not _is_range_covered(
+                        _db_prices_range_cache.get(clean_s), req_min, req_max
+                    ):
+                        target_syms.append(clean_s)
                 # Preserve order while deduplicating
                 target_syms = list(dict.fromkeys(target_syms))
                 if not target_syms:
@@ -309,67 +477,57 @@ def prewarm_stock_prices_cache(symbols=None, min_date=None, max_date=None):
             symbols=target_syms,
             summary_only=False,
             min_date=min_date,
-            max_date=max_date
+            max_date=max_date,
+            include_monthly=False,
         )
         if not docs:
             return len(_db_prices_cache)
 
         with _db_cache_lock:
             for sym, doc in docs.items():
-                if doc:
-                    clean_s = sym.strip().upper().replace('.NS', '').replace('.BO', '')
-                    series_dict = {}
+                if not doc:
+                    continue
+                clean_s = _normalize_stock_symbol(sym, apply_alias=False)
+                _db_known_symbols.add(clean_s)
+                series_dict = {}
 
-                    # Pattern 2: Exact daily prices from server-side filtered window
-                    for p in doc.get("prices", []):
-                        d = str(p.get("d") or "")[:10]
-                        c = p.get("c")
-                        if d and c is not None and float(c) > 0:
-                            if min_date and d < min_date:
-                                continue
-                            if max_date and d > max_date:
-                                continue
-                            series_dict[d] = round(float(c), 2)
+                # Pattern 2: Exact daily prices from server-side filtered window
+                for p in doc.get("prices", []):
+                    d = str(p.get("d") or "")[:10]
+                    c = p.get("c")
+                    if d and c is not None and float(c) > 0:
+                        if req_min and d < req_min:
+                            continue
+                        if req_max and d > req_max:
+                            continue
+                        series_dict[d] = round(float(c), 2)
 
-                    # Fallback to monthly prices only if daily prices were completely empty
-                    if not series_dict and doc.get("monthly_prices"):
-                        for item in doc.get("monthly_prices", []):
-                            m = item.get("m")
-                            fc = item.get("first_close") or item.get("avg_close")
-                            if m and fc and float(fc) > 0:
-                                d_m = f"{m}-01"
-                                if min_date and d_m < min_date[:7] + "-01":
-                                    continue
-                                if max_date and d_m > max_date[:7] + "-28":
-                                    continue
-                                series_dict[d_m] = round(float(fc), 2)
+                series = [(d, series_dict[d]) for d in sorted(series_dict.keys())]
+                prev_range = _db_prices_range_cache.get(clean_s)
+                if series and clean_s in _db_prices_cache and _db_prices_cache[clean_s]:
+                    merged_dict = dict(_db_prices_cache[clean_s])
+                    merged_dict.update(series_dict)
+                    series = [(d, merged_dict[d]) for d in sorted(merged_dict.keys())]
+                elif not series and clean_s in _db_prices_cache and _db_prices_cache[clean_s]:
+                    series = _db_prices_cache[clean_s]
 
-                    series = [(d, series_dict[d]) for d in sorted(series_dict.keys())]
-                    if series:
-                        prev_range = _db_prices_range_cache.get(clean_s)
-                        if clean_s in _db_prices_cache and _db_prices_cache[clean_s]:
-                            merged_dict = dict(_db_prices_cache[clean_s])
-                            merged_dict.update(series_dict)
-                            series = [(d, merged_dict[d]) for d in sorted(merged_dict.keys())]
-                        _db_prices_cache[clean_s] = series
-                        if prev_range == (None, None) or (req_min is None and req_max is None):
-                            _db_prices_range_cache[clean_s] = (None, None)
-                        elif prev_range is None:
-                            _db_prices_range_cache[clean_s] = (req_min, req_max)
-                        else:
-                            p_min, p_max = prev_range
-                            new_min = None if (p_min is None or req_min is None) else min(p_min, req_min)
-                            new_max = None if (p_max is None or req_max is None) else max(p_max, req_max)
-                            _db_prices_range_cache[clean_s] = (new_min, new_max)
-                        try:
-                            # Prefer actual earliest stored date in doc if available
-                            s_date = doc.get("start_date") or doc.get("min_date")
-                            first_d_str = str(s_date)[:10] if s_date else series[0][0][:10]
-                            first_d = datetime.strptime(first_d_str, "%Y-%m-%d").date()
-                            with _earliest_price_lock:
-                                _earliest_price_cache[clean_s] = first_d
-                        except Exception:
-                            pass
+                if prev_range == (None, None) or (req_min is None and req_max is None):
+                    new_range = (None, None)
+                elif prev_range is None:
+                    new_range = (req_min, req_max)
+                else:
+                    p_min, p_max = prev_range
+                    new_min = None if (p_min is None or req_min is None) else min(p_min, req_min)
+                    new_max = None if (p_max is None or req_max is None) else max(p_max, req_max)
+                    new_range = (new_min, new_max)
+
+                _store_db_series_locked(clean_s, series, new_range)
+
+                s_date = doc.get("start_date") or doc.get("min_date")
+                first_d = parse_date_fast(s_date or (series[0][0] if series else None))
+                if first_d:
+                    with _earliest_price_lock:
+                        _earliest_price_cache[clean_s] = first_d
 
         return len(_db_prices_cache)
     except Exception as e:
@@ -381,11 +539,36 @@ def prewarm_stock_prices_cache(symbols=None, min_date=None, max_date=None):
 # TRADING CALENDAR & TRADING HOURS RULES
 # ==============================================================================
 
-def get_official_trading_holidays():
+_HOLIDAYS_CACHE = None
+_HOLIDAYS_CACHE_TS = 0.0
+_HOLIDAYS_CACHE_TTL_SECONDS = 900.0
+_HOLIDAYS_CACHE_LOCK = threading.Lock()
+
+
+def clear_trading_holidays_cache():
+    """Clears the in-memory trading holidays TTL cache."""
+    global _HOLIDAYS_CACHE, _HOLIDAYS_CACHE_TS
+    with _HOLIDAYS_CACHE_LOCK:
+        _HOLIDAYS_CACHE = None
+        _HOLIDAYS_CACHE_TS = 0.0
+
+
+def get_official_trading_holidays(force_refresh=False):
     """
-    Loads all official trading holidays from db_store (collection trading_holidays).
+    Loads all official trading holidays from db_store (collection trading_holidays),
+    cached in memory with a 15-minute TTL to eliminate repeated DB scans in loops.
     Returns a set of 'YYYY-MM-DD' holiday strings.
     """
+    global _HOLIDAYS_CACHE, _HOLIDAYS_CACHE_TS
+    now_ts = _time_mod.monotonic()
+    with _HOLIDAYS_CACHE_LOCK:
+        if (
+            not force_refresh
+            and _HOLIDAYS_CACHE is not None
+            and (now_ts - _HOLIDAYS_CACHE_TS) < _HOLIDAYS_CACHE_TTL_SECONDS
+        ):
+            return set(_HOLIDAYS_CACHE)
+
     try:
         from db_store import load_trading_holidays_db
         holidays_list = load_trading_holidays_db() or []
@@ -394,11 +577,17 @@ def get_official_trading_holidays():
             d_str = h.get("date")
             is_trade = h.get("is_trading_holiday", True)
             if d_str and is_trade:
-                # normalize YYYY-MM-DD
                 holidays_set.add(str(d_str).strip()[:10])
+        if holidays_set:
+            with _HOLIDAYS_CACHE_LOCK:
+                _HOLIDAYS_CACHE = frozenset(holidays_set)
+                _HOLIDAYS_CACHE_TS = _time_mod.monotonic()
         return holidays_set
     except Exception as e:
         logger.warning(f"Error loading trading holidays from db: {e}")
+        with _HOLIDAYS_CACHE_LOCK:
+            if _HOLIDAYS_CACHE is not None:
+                return set(_HOLIDAYS_CACHE)
         return set()
 
 
@@ -410,7 +599,7 @@ def is_trading_holiday(d, holidays_set=None):
         return True
     if holidays_set is None:
         holidays_set = get_official_trading_holidays()
-    return d.strftime("%Y-%m-%d") in holidays_set
+    return d.isoformat() in holidays_set
 
 
 def get_next_trading_day(target_date, holidays_set=None):
@@ -419,18 +608,12 @@ def get_next_trading_day(target_date, holidays_set=None):
     or official trading holiday.
     Returns: (adjusted_date, was_moved)
     """
-    if isinstance(target_date, datetime):
-        curr = target_date.date()
-    elif isinstance(target_date, str):
-        curr = datetime.strptime(target_date[:10], "%Y-%m-%d").date()
-    else:
-        curr = target_date
+    curr = parse_date_fast(target_date, fallback=target_date)
 
     if holidays_set is None:
         holidays_set = get_official_trading_holidays()
 
     was_moved = False
-    original = curr
     while is_trading_holiday(curr, holidays_set):
         curr += timedelta(days=1)
         was_moved = True
@@ -441,18 +624,15 @@ def get_next_trading_day(target_date, holidays_set=None):
 def is_in_trading_hours_now():
     """
     Indian market trading hours: 09:15 to 15:30 IST on trading days.
-    Returns True if current time is within trading hours.
+    Returns True if current IST time is within trading hours.
     """
     try:
-        # Local time or IST (UTC + 05:30)
-        now_dt = datetime.now()
-        # Check weekend / holiday
+        now_dt = now_ist()
         if is_trading_holiday(now_dt.date()):
             return False
         market_start = time(9, 15)
         market_end = time(15, 30)
-        curr_time = now_dt.time()
-        return market_start <= curr_time <= market_end
+        return market_start <= now_dt.time() <= market_end
     except Exception:
         return False
 
@@ -461,7 +641,7 @@ def is_in_trading_hours_now():
 # HISTORICAL PRICE FETCHING & CACHING
 # ==============================================================================
 
-def fetch_stock_daily_series(symbol, target_cutoff_date=None, force_refresh=False, db_only=False):
+def fetch_stock_daily_series(symbol, target_cutoff_date=None, force_refresh=False, db_only=False, min_date=None):
     """
     Fetches daily price series for an NSE stock.
     Priority 1: Database collection 'stock_closing_prices' with in-memory fast caching.
@@ -469,40 +649,34 @@ def fetch_stock_daily_series(symbol, target_cutoff_date=None, force_refresh=Fals
                 (Yahoo Finance / Market Fetcher) with disk caching for high performance.
     Returns list of (date_obj, close_price) sorted ascending.
     """
-    clean_sym = symbol.strip().upper().replace('.NS', '').replace('.BO', '')
-    
-    # Common ticker alias mappings on NSE
-    alias_map = {
-        'TATAMOTORS': 'TMPV',
-        'HDFC': 'HDFCBANK'
-    }
-    fetch_sym = alias_map.get(clean_sym, clean_sym)
-
-    target_cutoff_str = None
-    cutoff_date = None
-    if target_cutoff_date:
-        if isinstance(target_cutoff_date, str):
-            target_cutoff_str = target_cutoff_date[:10]
-            try:
-                cutoff_date = datetime.strptime(target_cutoff_str, "%Y-%m-%d").date()
-            except Exception:
-                cutoff_date = None
-        elif isinstance(target_cutoff_date, datetime):
-            cutoff_date = target_cutoff_date.date()
-            target_cutoff_str = cutoff_date.isoformat()
-        elif isinstance(target_cutoff_date, date):
-            cutoff_date = target_cutoff_date
-            target_cutoff_str = cutoff_date.isoformat()
-
-    data_points = None
+    fetch_sym = _normalize_stock_symbol(symbol, apply_alias=True)
+    cutoff_date = parse_date_fast(target_cutoff_date) if target_cutoff_date else None
+    target_cutoff_str = cutoff_date.isoformat() if cutoff_date else (
+        str(target_cutoff_date)[:10] if target_cutoff_date else None
+    )
 
     # =========================================================================
-    # 1. PRIMARY: FETCH FROM DATABASE (COLLECTION: stock_closing_prices)
+    # 1. PRIMARY: FAST PRE-PARSED IN-MEMORY CACHE / DATABASE COLLECTION
     # =========================================================================
     if not force_refresh:
+        cached_arrays = _get_cached_db_arrays(fetch_sym, cutoff_date or target_cutoff_str, min_date=min_date)
+        if cached_arrays is not None:
+            d_arr, p_arr = cached_arrays
+            return list(zip(d_arr, p_arr))
+
         db_series = get_stock_closing_prices_from_db(fetch_sym, target_cutoff_str)
-        if db_series and len(db_series) > 0:
+        if db_series is not None:
+            if not db_series:
+                return []
+            cached_arrays = _get_cached_db_arrays(fetch_sym, cutoff_date or target_cutoff_str, min_date=min_date)
+            if cached_arrays is not None:
+                d_arr, p_arr = cached_arrays
+                return list(zip(d_arr, p_arr))
             data_points = db_series
+        else:
+            data_points = None
+    else:
+        data_points = None
 
     # If DB-only execution is explicitly requested, skip live external API fallbacks
     if db_only and not data_points:
@@ -533,7 +707,7 @@ def fetch_stock_daily_series(symbol, target_cutoff_date=None, force_refresh=Fals
                 'Referer': 'https://finance.yahoo.com/'
             }
             hosts = ['query2.finance.yahoo.com', 'query1.finance.yahoo.com']
-            
+
             for host in hosts:
                 url = f"https://{host}/v8/finance/chart/{fetch_sym}.NS?interval=1d&range=5y"
                 try:
@@ -544,13 +718,13 @@ def fetch_stock_daily_series(symbol, target_cutoff_date=None, force_refresh=Fals
                         timestamps = res.get('timestamp', []) or []
                         quotes = res.get('indicators', {}).get('quote', [{}])[0]
                         closes = quotes.get('close', []) or []
-                        
+
                         series = []
                         for ts, c in zip(timestamps, closes):
                             if c is not None and c > 0:
                                 d_str = datetime.fromtimestamp(ts).strftime("%Y-%m-%d")
                                 series.append((d_str, round(float(c), 2)))
-                        
+
                         if series:
                             data_points = series
                             with _cache_lock:
@@ -559,8 +733,7 @@ def fetch_stock_daily_series(symbol, target_cutoff_date=None, force_refresh=Fals
                                     "series": series
                                 }
                             with _db_cache_lock:
-                                _db_prices_cache[fetch_sym] = series
-                                _db_prices_range_cache[fetch_sym] = (series[0][0][:10], series[-1][0][:10])
+                                _store_db_series_locked(fetch_sym, series, (series[0][0][:10], series[-1][0][:10]))
                             break
                     elif r.status_code in (404, 400):
                         break
@@ -588,30 +761,17 @@ def fetch_stock_daily_series(symbol, target_cutoff_date=None, force_refresh=Fals
     if not data_points:
         return []
 
-    # Convert to (date_obj, close_price)
-    cutoff_date = None
-    if target_cutoff_date:
-        if isinstance(target_cutoff_date, str):
-            try:
-                cutoff_date = datetime.strptime(target_cutoff_date[:10], "%Y-%m-%d").date()
-            except Exception:
-                cutoff_date = None
-        elif isinstance(target_cutoff_date, datetime):
-            cutoff_date = target_cutoff_date.date()
-        elif isinstance(target_cutoff_date, date):
-            cutoff_date = target_cutoff_date
-
     parsed_series = []
-    for d_str, price in data_points:
-        try:
-            dt = datetime.strptime(d_str[:10], "%Y-%m-%d").date()
-            if cutoff_date and dt > cutoff_date:
-                continue
-            parsed_series.append((dt, price))
-        except Exception:
+    for d_val, price in data_points:
+        dt = d_val if (isinstance(d_val, date) and not isinstance(d_val, datetime)) else parse_date_fast(d_val)
+        if dt is None:
             continue
+        if cutoff_date and dt > cutoff_date:
+            continue
+        parsed_series.append((dt, price))
 
-    parsed_series.sort(key=lambda x: x[0])
+    if len(parsed_series) > 1 and any(parsed_series[i][0] > parsed_series[i + 1][0] for i in range(len(parsed_series) - 1)):
+        parsed_series.sort(key=lambda x: x[0])
     return parsed_series
 
 
@@ -619,7 +779,27 @@ def fetch_stock_daily_series(symbol, target_cutoff_date=None, force_refresh=Fals
 # MOMENTUM FORMULA & METRICS EVALUATION
 # ==============================================================================
 
-def calculate_stock_momentum_metrics(symbol, target_date, in_trading_hours=False, trading_days_per_month=30, db_only=False):
+def _calc_annualized_volatility(returns_list, annual_factor, default_vol):
+    """Computes sample annualized percentage volatility from return decimals."""
+    count = len(returns_list)
+    if count <= 1:
+        return default_vol
+    mean_v = sum(returns_list) / count
+    var_v = sum((x - mean_v) ** 2 for x in returns_list) / max(1, count - 1)
+    return math.sqrt(max(0.0, var_v)) * math.sqrt(annual_factor) * 100.0
+
+
+def _fmt_date_price_point(dt_obj, price):
+    """Formats a calculation boundary as 'DD/MM - price' (e.g. '02/10 - 253.2')."""
+    if dt_obj is None or price is None:
+        return "—"
+    p_str = f"{round(float(price), 2):.2f}"
+    if "." in p_str:
+        p_str = p_str.rstrip("0").rstrip(".")
+    return f"{dt_obj.strftime('%d/%m')} - {p_str}"
+
+
+def calculate_stock_momentum_metrics(symbol, target_date, in_trading_hours=False, trading_days_per_month=30, db_only=False, include_windows=False):
     """
     Calculates 1M, 2M, 5M, 9M price returns and 1M, 3M volatilities for a stock
     at target_date according to the user's trading hours rules:
@@ -633,33 +813,27 @@ def calculate_stock_momentum_metrics(symbol, target_date, in_trading_hours=False
         return None
 
     # Apply trading hours price rule
-    if in_trading_hours and len(series) >= 2:
-        eval_series = series[:-1]
-    else:
-        eval_series = series
-
+    eval_series = series[:-1] if (in_trading_hours and len(series) >= 2) else series
     if not eval_series or len(eval_series) < 2:
         return None
 
-    # Ensure all dates are datetime.date objects
-    normalized_series = []
-    for d, p in eval_series:
-        if isinstance(d, str):
-            try:
-                d = datetime.strptime(d[:10], "%Y-%m-%d").date()
-            except Exception:
-                continue
-        elif isinstance(d, datetime):
-            d = d.date()
-        normalized_series.append((d, float(p)))
+    first_d_sample = eval_series[0][0]
+    if isinstance(first_d_sample, date) and not isinstance(first_d_sample, datetime):
+        dates = [d for d, _ in eval_series]
+        prices = [float(p) for _, p in eval_series]
+    else:
+        dates = []
+        prices = []
+        for d, p in eval_series:
+            d_obj = parse_date_fast(d)
+            if d_obj is not None:
+                dates.append(d_obj)
+                prices.append(float(p))
 
-    if not normalized_series or len(normalized_series) < 2:
+    n = len(prices)
+    if n < 2:
         return None
 
-    eval_series = normalized_series
-    dates = [d for d, _ in eval_series]
-    prices = [p for _, p in eval_series]
-    n = len(prices)
     curr_date = dates[-1]
     curr_price = prices[-1]
 
@@ -667,12 +841,9 @@ def calculate_stock_momentum_metrics(symbol, target_date, in_trading_hours=False
     td = 21 if int(trading_days_per_month or 30) == 21 else 30
 
     # Determine whether the series consists of monthly average bars or daily bars
-    span_days = (dates[-1] - dates[0]).days if len(dates) >= 2 else 0
-    avg_step = (span_days / float(len(dates) - 1)) if len(dates) >= 2 else 1.0
+    span_days = (dates[-1] - dates[0]).days
+    avg_step = span_days / float(n - 1)
     is_monthly = (avg_step >= 20.0)
-
-    import bisect
-    import calendar
 
     def _get_lookback_index(months_back, td_days):
         if is_monthly:
@@ -706,47 +877,41 @@ def calculate_stock_momentum_metrics(symbol, target_date, in_trading_hours=False
     r_5m = ((curr_price - p_5m) / p_5m) * 100.0 if p_5m > 0 else 0.0
     r_9m = ((curr_price - p_9m) / p_9m) * 100.0 if p_9m > 0 else 0.0
 
+    vol_1m_start_idx = None
+    vol_3m_start_idx = None
     if is_monthly:
-        # On monthly bars, calculate volatility using recent monthly returns annualized by sqrt(12)
+        m_lookback_3 = min(6, n - 1)
         m_lookback_1 = min(3, n - 1)
+        m_rets_3 = [(prices[-i] - prices[-i - 1]) / prices[-i - 1] for i in range(1, m_lookback_3 + 1) if prices[-i - 1] > 0] if m_lookback_3 >= 2 else []
+        m_rets_1 = [(prices[-i] - prices[-i - 1]) / prices[-i - 1] for i in range(1, m_lookback_1 + 1) if prices[-i - 1] > 0] if m_lookback_1 >= 2 else []
+        vol_1m = _calc_annualized_volatility(m_rets_1, 12, 15.0)
+        vol_3m = _calc_annualized_volatility(m_rets_3, 12, 18.0)
         if m_lookback_1 >= 2:
-            m_rets_1 = [(prices[-i] - prices[-i-1]) / prices[-i-1] for i in range(1, m_lookback_1 + 1) if prices[-i-1] > 0]
-            mean_1 = sum(m_rets_1) / len(m_rets_1) if m_rets_1 else 0.0
-            var_1 = sum((x - mean_1)**2 for x in m_rets_1) / max(1, len(m_rets_1) - 1) if len(m_rets_1) > 1 else 0.0
-            vol_1m = math.sqrt(max(0.0, var_1)) * math.sqrt(12) * 100.0
+            vol_1m_start_idx = max(0, n - 1 - m_lookback_1)
+        if m_lookback_3 >= 2:
+            vol_3m_start_idx = max(0, n - 1 - m_lookback_3)
+    else:
+        days_3m = min(3 * td, n - 1)
+        days_1m = min(td, n - 1)
+        if days_3m > 1:
+            # Compute once over max window (1..days_3m), then slice [:days_1m] when positive prices match
+            all_rets_3m = [(prices[-i] - prices[-i - 1]) / prices[-i - 1] for i in range(1, days_3m + 1) if prices[-i - 1] > 0]
+            if days_1m > 1:
+                if all(prices[-i - 1] > 0 for i in range(1, days_1m + 1)):
+                    daily_rets_1m = all_rets_3m[:days_1m]
+                else:
+                    daily_rets_1m = [(prices[-i] - prices[-i - 1]) / prices[-i - 1] for i in range(1, days_1m + 1) if prices[-i - 1] > 0]
+                vol_1m = _calc_annualized_volatility(daily_rets_1m, 252, 15.0)
+                vol_1m_start_idx = max(0, n - 1 - days_1m)
+            else:
+                vol_1m = 15.0
+            vol_3m = _calc_annualized_volatility(all_rets_3m, 252, 18.0)
+            vol_3m_start_idx = max(0, n - 1 - days_3m)
         else:
             vol_1m = 15.0
-
-        m_lookback_3 = min(6, n - 1)
-        if m_lookback_3 >= 2:
-            m_rets_3 = [(prices[-i] - prices[-i-1]) / prices[-i-1] for i in range(1, m_lookback_3 + 1) if prices[-i-1] > 0]
-            mean_3 = sum(m_rets_3) / len(m_rets_3) if m_rets_3 else 0.0
-            var_3 = sum((x - mean_3)**2 for x in m_rets_3) / max(1, len(m_rets_3) - 1) if len(m_rets_3) > 1 else 0.0
-            vol_3m = math.sqrt(max(0.0, var_3)) * math.sqrt(12) * 100.0
-        else:
             vol_3m = 18.0
-    else:
-        # 1M Volatility (up to td trading days annualized standard deviation)
-        days_1m = min(td, n - 1)
-        if days_1m > 1:
-            daily_rets_1m = [(prices[-i] - prices[-i-1]) / prices[-i-1] for i in range(1, days_1m + 1) if prices[-i-1] > 0]
-            mean_1m = sum(daily_rets_1m) / len(daily_rets_1m) if daily_rets_1m else 0.0
-            var_1m = sum((x - mean_1m)**2 for x in daily_rets_1m) / max(1, len(daily_rets_1m) - 1) if len(daily_rets_1m) > 1 else 0.0
-            vol_1m = math.sqrt(max(0.0, var_1m)) * math.sqrt(252) * 100.0
-        else:
-            vol_1m = 15.0  # sensible neutral default volatility
 
-        # 3M Volatility (up to 3*td trading days annualized standard deviation)
-        days_3m = min(3 * td, n - 1)
-        if days_3m > 1:
-            daily_rets_3m = [(prices[-i] - prices[-i-1]) / prices[-i-1] for i in range(1, days_3m + 1) if prices[-i-1] > 0]
-            mean_3m = sum(daily_rets_3m) / len(daily_rets_3m) if daily_rets_3m else 0.0
-            var_3m = sum((x - mean_3m)**2 for x in daily_rets_3m) / max(1, len(daily_rets_3m) - 1) if len(daily_rets_3m) > 1 else 0.0
-            vol_3m = math.sqrt(max(0.0, var_3m)) * math.sqrt(252) * 100.0
-        else:
-            vol_3m = 18.0  # sensible neutral default volatility
-
-    return {
+    result = {
         "symbol": symbol.strip().upper(),
         "price": round(curr_price, 2),
         "return_1m": round(r_1m, 2),
@@ -762,6 +927,25 @@ def calculate_stock_momentum_metrics(symbol, target_date, in_trading_hours=False
         "vol_1m": round(vol_1m, 2),
         "vol_3m": round(vol_3m, 2),
     }
+
+    if include_windows:
+        end_point = _fmt_date_price_point(curr_date, curr_price)
+        result["windows"] = {
+            "ret_1m_start": _fmt_date_price_point(dates[idx_1m], p_1m),
+            "ret_1m_end": end_point,
+            "ret_2m_start": _fmt_date_price_point(dates[idx_2m], p_2m),
+            "ret_2m_end": end_point,
+            "ret_5m_start": _fmt_date_price_point(dates[idx_5m], p_5m),
+            "ret_5m_end": end_point,
+            "ret_9m_start": _fmt_date_price_point(dates[idx_9m], p_9m),
+            "ret_9m_end": end_point,
+            "vol_1m_start": _fmt_date_price_point(dates[vol_1m_start_idx], prices[vol_1m_start_idx]) if vol_1m_start_idx is not None else "—",
+            "vol_1m_end": end_point if vol_1m_start_idx is not None else "—",
+            "vol_3m_start": _fmt_date_price_point(dates[vol_3m_start_idx], prices[vol_3m_start_idx]) if vol_3m_start_idx is not None else "—",
+            "vol_3m_end": end_point if vol_3m_start_idx is not None else "—",
+        }
+
+    return result
 
 
 _FORMULA_WEIGHTS_CACHE = {}
@@ -832,45 +1016,136 @@ def parse_stock_date_added(date_str):
     return None
 
 
+def _extract_item_intervals(item):
+    """
+    Extracts normalized list of (date_added, date_exited) date pairs from a constituent dict/str.
+    Supports:
+    - intervals: [{"date_added": ..., "date_exited": ...}, ...]
+    - date_added / date_exited (or date_removed) scalar fields
+    """
+    if not isinstance(item, dict):
+        return [(None, None)]
+    raw_ivs = item.get("intervals")
+    if isinstance(raw_ivs, list) and len(raw_ivs) > 0:
+        parsed_ivs = []
+        for iv in raw_ivs:
+            if not isinstance(iv, dict):
+                continue
+            d_add = parse_stock_date_added(iv.get("date_added")) if iv.get("date_added") else None
+            ex_raw = iv.get("date_exited") or iv.get("date_removed")
+            d_exit = parse_stock_date_added(ex_raw) if ex_raw else None
+            parsed_ivs.append((d_add, d_exit))
+        if parsed_ivs:
+            return parsed_ivs
+
+    d_add_raw = item.get("date_added")
+    d_add = parse_stock_date_added(d_add_raw) if d_add_raw else None
+    d_exit_raw = item.get("date_exited") or item.get("date_removed")
+    d_exit = parse_stock_date_added(d_exit_raw) if d_exit_raw else None
+    return [(d_add, d_exit)]
+
+
+def filter_constituents_for_window(stock_items, start_date, end_date=None):
+    """
+    Fast pre-filter (without DB metadata calls) returning only constituents whose
+    membership interval [date_added, date_exited) overlaps [start_date, end_date].
+    When end_date is None, checks exact membership on start_date.
+    Avoids prewarming exited historical stocks from unrelated years.
+    """
+    if not stock_items:
+        return []
+    win_start = parse_date_fast(start_date, fallback=start_date)
+    win_end = parse_date_fast(end_date, fallback=end_date) if end_date is not None else win_start
+
+    active_items = []
+    for item in stock_items:
+        intervals = _extract_item_intervals(item)
+        matched = False
+        for d_add, d_exit in intervals:
+            if d_add is not None and d_add > win_end:
+                continue
+            if d_exit is not None and d_exit <= win_start:
+                continue
+            matched = True
+            break
+        if matched:
+            active_items.append(item)
+    return active_items
+
+
 def filter_universe_by_date_with_meta(stock_items, target_date, check_price_available=True):
     """
-    Filters universe constituent stocks based on effective date:
-    1) If stock has date_added (e.g. manual index), entered date must be <= target_date.
+    Filters universe constituent stocks based on effective membership intervals & price history:
+    1) Membership interval [date_added, date_exited): stock must satisfy d_added <= target_date
+       and (d_exited is None or target_date < d_exited) for at least one interval.
     2) If check_price_available is True, earliest price available date must be <= target_date.
-    If any stock entered date or price available date is after target_date,
-    it is excluded on target_date and will be calculated from its effective date onwards.
+    If a stock has exited before/on target_date, it is excluded on target_date (allowing
+    execute_rebalance_run to exit any open holding cleanly).
     Returns: (eligible_symbols_list, meta_dict)
     """
     eligible = []
-    if isinstance(target_date, str):
-        target_date = datetime.strptime(target_date[:10], "%Y-%m-%d").date()
-    elif isinstance(target_date, datetime):
-        target_date = target_date.date()
+    target_date = parse_date_fast(target_date, fallback=target_date)
 
+    # Check membership date intervals first before touching DB earliest price metadata
+    # for stocks not active on target_date.
+    candidates = []
     all_effective_dates = []
     all_dates_added = []
     stock_effective_map = {}
 
     for item in stock_items:
         sym = item.get("symbol") if isinstance(item, dict) else str(item)
-        clean_s = sym.strip().upper().replace('.NS', '').replace('.BO', '')
-        date_added_raw = item.get("date_added") if isinstance(item, dict) else None
+        if not sym:
+            continue
+        clean_s = _normalize_stock_symbol(sym, apply_alias=False)
+        intervals = _extract_item_intervals(item)
 
-        d_added = parse_stock_date_added(date_added_raw) if date_added_raw else None
-        if d_added:
-            all_dates_added.append(d_added)
+        first_add = None
+        for d_add, _ in intervals:
+            if d_add is not None:
+                all_dates_added.append(d_add)
+                if first_add is None or d_add < first_add:
+                    first_add = d_add
 
+        in_any_interval = False
+        has_future_open = False
+        for d_add, d_exit in intervals:
+            if (d_add is None or d_add <= target_date) and (d_exit is None or target_date < d_exit):
+                in_any_interval = True
+                break
+            if d_add is not None and d_add > target_date and (d_exit is None or d_add < d_exit):
+                has_future_open = True
+
+        if in_any_interval:
+            candidates.append((item, sym, clean_s, intervals))
+        elif has_future_open and first_add is not None:
+            all_effective_dates.append(first_add)
+            stock_effective_map[clean_s] = first_add
+
+    if check_price_available and candidates:
+        syms = [c[1] for c in candidates]
+        _batch_load_earliest_dates(syms)
+
+    for _, sym, clean_s, intervals in candidates:
         d_price = get_stock_earliest_price_date(clean_s) if check_price_available else None
 
-        # Effective date is the later of date_added and earliest price date
-        dates_to_compare = [d for d in [d_added, d_price] if d is not None]
-        if dates_to_compare:
-            eff_date = max(dates_to_compare)
-            all_effective_dates.append(eff_date)
-            stock_effective_map[clean_s] = eff_date
-            if eff_date <= target_date:
-                eligible.append(sym)
-        else:
+        active_and_priced = False
+        best_eff = None
+        for d_add, d_exit in intervals:
+            if (d_add is None or d_add <= target_date) and (d_exit is None or target_date < d_exit):
+                dates_to_compare = [d for d in [d_add, d_price] if d is not None]
+                eff_d = max(dates_to_compare) if dates_to_compare else None
+                if eff_d is not None:
+                    if best_eff is None or eff_d < best_eff:
+                        best_eff = eff_d
+                if eff_d is None or eff_d <= target_date:
+                    active_and_priced = True
+                    break
+
+        if best_eff is not None:
+            all_effective_dates.append(best_eff)
+            stock_effective_map[clean_s] = best_eff
+        if active_and_priced:
             eligible.append(sym)
 
     all_effective_dates.sort()
@@ -928,12 +1203,7 @@ def rank_and_evaluate_universe(stock_items, target_date, formula_str, no_of_stoc
 
     # Pre-warm DB stock closing prices into memory cache for requested target_date window
     if target_date:
-        if isinstance(target_date, str):
-            td_obj = datetime.strptime(target_date[:10], "%Y-%m-%d").date()
-        elif isinstance(target_date, datetime):
-            td_obj = target_date.date()
-        else:
-            td_obj = target_date
+        td_obj = parse_date_fast(target_date, fallback=target_date)
         win_min = (td_obj - timedelta(days=450)).isoformat()
         win_max = td_obj.isoformat()
         prewarm_stock_prices_cache(eligible_symbols, min_date=win_min, max_date=win_max)

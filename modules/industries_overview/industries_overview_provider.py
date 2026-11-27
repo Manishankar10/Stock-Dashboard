@@ -179,7 +179,8 @@ class IndustriesOverviewProvider:
         self.overview_file = os.path.join("app_data", "industries_overview.json")
 
         self._overview_data = {}
-        self._lock = threading.Lock()
+        self._has_loaded = False
+        self._lock = threading.RLock()
         self._is_refreshing = False
         self._refresh_progress = ""
         self._refresh_percent = 0
@@ -190,8 +191,7 @@ class IndustriesOverviewProvider:
         self._cache_timestamp = 0
         self._stocks_etag_map = {}
 
-        # Load from Database (MongoDB Atlas & SQLite) into ultra-fast in-memory cache
-        self._load_overview_data()
+        # Lazy-loaded on first request via _ensure_loaded() to keep server startup fast.
 
         # Remove deprecated industry_stocks_cache.json if present
         deprecated_cache = os.path.join(data_dir, "app_data", "industry_stocks_cache.json")
@@ -229,31 +229,40 @@ class IndustriesOverviewProvider:
                     pass
         return s
 
+    def _ensure_loaded(self, force_reload=False):
+        with self._lock:
+            if not self._has_loaded or force_reload or not self._overview_data or not self._overview_data.get('industries'):
+                self._load_overview_data_locked()
+
     def _load_overview_data(self):
         with self._lock:
-            try:
-                # 1. Primary: Load from Database (MongoDB Atlas & SQLite)
-                db_res = db_store.load_industries_overview_db(fallback_filepath=self.overview_file)
-                if db_res and isinstance(db_res.get('data'), dict) and len(db_res['data'].get('industries', [])) > 0:
-                    self._overview_data = db_res['data']
-                    print(f"Loaded industries overview from DB: {len(self._overview_data.get('industries', []))} industries.")
-                elif os.path.exists(self.overview_file):
-                    with open(self.overview_file, "r", encoding="utf-8") as f:
-                        self._overview_data = json.load(f)
-                else:
-                    self._overview_data = {}
+            self._load_overview_data_locked()
 
-                if not isinstance(self._overview_data, dict):
-                    self._overview_data = {}
-                if 'industry_stocks' not in self._overview_data:
-                    self._overview_data['industry_stocks'] = {}
-                if self._overview_data.get('last_updated_display'):
-                    self._overview_data['last_updated_display'] = format_ist_display(self._overview_data['last_updated_display'])
-
-                self._recompute_cache_etags()
-            except Exception as e:
-                print(f"Error loading industries overview: {e}")
+    def _load_overview_data_locked(self):
+        try:
+            # 1. Primary: Load from Database (MongoDB Atlas & SQLite)
+            db_res = db_store.load_industries_overview_db(fallback_filepath=self.overview_file)
+            if db_res and isinstance(db_res.get('data'), dict) and len(db_res['data'].get('industries', [])) > 0:
+                self._overview_data = db_res['data']
+                print(f"Loaded industries overview from DB: {len(self._overview_data.get('industries', []))} industries.")
+            elif os.path.exists(self.overview_file):
+                with open(self.overview_file, "r", encoding="utf-8") as f:
+                    self._overview_data = json.load(f)
+            else:
                 self._overview_data = {}
+
+            if not isinstance(self._overview_data, dict):
+                self._overview_data = {}
+            if 'industry_stocks' not in self._overview_data:
+                self._overview_data['industry_stocks'] = {}
+            if self._overview_data.get('last_updated_display'):
+                self._overview_data['last_updated_display'] = format_ist_display(self._overview_data['last_updated_display'])
+
+            self._has_loaded = True
+            self._recompute_cache_etags()
+        except Exception as e:
+            print(f"Error loading industries overview: {e}")
+            self._overview_data = {}
 
     def _recompute_cache_etags(self):
         import hashlib
@@ -275,6 +284,7 @@ class IndustriesOverviewProvider:
 
     def get_etag(self) -> str:
         with self._lock:
+            self._ensure_loaded()
             if not self._cache_etag:
                 self._recompute_cache_etags()
             return self._cache_etag
@@ -282,6 +292,7 @@ class IndustriesOverviewProvider:
     def get_stocks_etag(self, path: str) -> str:
         clean_path = path.strip('/')
         with self._lock:
+            self._ensure_loaded()
             if clean_path in self._stocks_etag_map:
                 return self._stocks_etag_map[clean_path]
             return f'W/"stk-{clean_path}-{int(self._cache_timestamp)}"'
@@ -369,15 +380,14 @@ class IndustriesOverviewProvider:
         return data
 
     def get_industries_overview(self, force_refresh=False):
-        """Strictly serve from local app_data/industries_overview.json. Zero external calls."""
+        """Lazy-load industries overview from DB/cache on demand. Zero external calls when cached."""
         with self._lock:
-            if not self._overview_data or not self._overview_data.get('industries'):
-                self._load_overview_data()
+            self._ensure_loaded(force_reload=force_refresh)
 
             if self._overview_data and self._overview_data.get('industries'):
                 return self._enrich_taxonomy(self._overview_data)
 
-        # Only if file is completely missing on disk, scrape initially once
+        # Only if completely missing in DB and disk, scrape initially once
         return self._scrape_master_directory_initial()
 
     def get_industry_stocks(self, path_or_code, force_refresh=False):
@@ -550,6 +560,7 @@ class IndustriesOverviewProvider:
 
     def _run_background_refresh(self):
         try:
+            self._ensure_loaded()
             # 1. Immediate timestamped backup of existing file before any scraping
             backup_filename = None
             if os.path.exists(self.overview_file):
@@ -684,6 +695,7 @@ class IndustriesOverviewProvider:
 
             with self._lock:
                 self._overview_data = final_output
+                self._has_loaded = True
                 self._recompute_cache_etags()
 
             self._refresh_progress = "Completed successfully. All industries & stocks updated."
@@ -698,6 +710,7 @@ class IndustriesOverviewProvider:
 
     def get_refresh_status(self):
         with self._lock:
+            self._ensure_loaded()
             raw_up = self._overview_data.get('last_updated_display') or self._overview_data.get('last_updated')
             last_up = format_ist_display(raw_up) if (raw_up and raw_up != "Never") else "Never"
             backup = self._last_backup_file or self._overview_data.get('last_backup')
@@ -797,5 +810,7 @@ class IndustriesOverviewProvider:
 
         with self._lock:
             self._overview_data = final_output
+            self._has_loaded = True
+            self._recompute_cache_etags()
 
         return final_output

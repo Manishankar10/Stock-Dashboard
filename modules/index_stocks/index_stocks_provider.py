@@ -184,6 +184,147 @@ class IndexStocksProvider:
         # Ensure database is pre-seeded on startup
         self._ensure_initial_db_seed()
 
+    @staticmethod
+    def merge_constituent_history(
+        existing_history: Optional[List[Dict[str, Any]]],
+        existing_stocks: Optional[List[Dict[str, Any]]],
+        new_stocks: Optional[List[Dict[str, Any]]],
+        event_date_iso: str,
+        initial_date_added: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Merges old membership history + current active list into interval-based
+        constituent_history records so re-entries, promotions, and removals retain exact dates.
+        """
+        hist_map: Dict[str, Dict[str, Any]] = {}
+
+        for entry in (existing_history or []):
+            if not isinstance(entry, dict):
+                continue
+            sym = str(entry.get("symbol") or "").strip().upper()
+            if not sym:
+                continue
+            intervals = []
+            for iv in (entry.get("intervals") or []):
+                if isinstance(iv, dict):
+                    intervals.append({
+                        "date_added": iv.get("date_added"),
+                        "date_exited": iv.get("date_exited"),
+                    })
+            hist_map[sym] = {
+                "symbol": sym,
+                "company_name": entry.get("company_name") or sym,
+                "industry": entry.get("industry") or "",
+                "series": entry.get("series") or "EQ",
+                "isin_code": entry.get("isin_code") or "",
+                "currently_active": bool(entry.get("currently_active", True)),
+                "intervals": intervals,
+            }
+
+        # Bootstrap from existing_stocks if constituent_history wasn't tracked yet
+        if not hist_map and existing_stocks:
+            for s in existing_stocks:
+                if not isinstance(s, dict):
+                    continue
+                sym = str(s.get("symbol") or "").strip().upper()
+                if not sym:
+                    continue
+                hist_map[sym] = {
+                    "symbol": sym,
+                    "company_name": s.get("company_name") or sym,
+                    "industry": s.get("industry") or "",
+                    "series": s.get("series") or "EQ",
+                    "isin_code": s.get("isin_code") or "",
+                    "currently_active": True,
+                    "intervals": [{"date_added": initial_date_added, "date_exited": None}],
+                }
+
+        new_map: Dict[str, Dict[str, Any]] = {}
+        for s in (new_stocks or []):
+            if not isinstance(s, dict):
+                continue
+            sym = str(s.get("symbol") or "").strip().upper()
+            if sym and sym not in new_map:
+                new_map[sym] = s
+
+        # Close open interval for exited stocks
+        for sym, rec in hist_map.items():
+            if sym not in new_map:
+                rec["currently_active"] = False
+                ivs = rec.setdefault("intervals", [])
+                if not ivs:
+                    ivs.append({"date_added": initial_date_added, "date_exited": event_date_iso})
+                elif ivs[-1].get("date_exited") is None:
+                    ivs[-1]["date_exited"] = event_date_iso
+
+        # Open/extend interval for active stocks
+        for sym, s in new_map.items():
+            if sym not in hist_map:
+                hist_map[sym] = {
+                    "symbol": sym,
+                    "company_name": s.get("company_name") or sym,
+                    "industry": s.get("industry") or "",
+                    "series": s.get("series") or "EQ",
+                    "isin_code": s.get("isin_code") or "",
+                    "currently_active": True,
+                    "intervals": [{"date_added": event_date_iso if (existing_history or existing_stocks) else initial_date_added, "date_exited": None}],
+                }
+            else:
+                rec = hist_map[sym]
+                if s.get("company_name"):
+                    rec["company_name"] = s["company_name"]
+                if s.get("industry"):
+                    rec["industry"] = s["industry"]
+                if s.get("isin_code"):
+                    rec["isin_code"] = s["isin_code"]
+                ivs = rec.setdefault("intervals", [])
+                if not rec.get("currently_active") or not ivs or ivs[-1].get("date_exited") is not None:
+                    ivs.append({"date_added": event_date_iso, "date_exited": None})
+                rec["currently_active"] = True
+
+        # Active first, then exited; sorted by symbol within each group
+        ordered = sorted(
+            hist_map.values(),
+            key=lambda x: (0 if x.get("currently_active") else 1, x.get("symbol", "")),
+        )
+        return ordered
+
+    def ensure_constituent_history_initialized(self) -> int:
+        """
+        Ensures every stored official index document has `constituent_history` initialized
+        from its current `stocks` list without altering active stocks. Returns count updated.
+        """
+        updated = 0
+        try:
+            stored = db_store.load_index_constituents_db() or {}
+            today_iso = now_ist().strftime("%Y-%m-%d")
+            for key, doc in stored.items():
+                if not isinstance(doc, dict):
+                    continue
+                if doc.get("constituent_history"):
+                    continue
+                stocks = doc.get("stocks") or []
+                if not stocks:
+                    continue
+                hist = self.merge_constituent_history(None, None, stocks, today_iso, initial_date_added=None)
+                meta = dict(doc.get("metadata") or {})
+                reg = INDEX_REGISTRY.get(key, {})
+                db_store.save_index_constituents_db(
+                    index_key=key,
+                    index_name=doc.get("index_name") or reg.get("name", key),
+                    symbol=doc.get("symbol") or reg.get("url_symbol", key),
+                    official_size=doc.get("official_size") or reg.get("official_size", len(stocks)),
+                    stocks=stocks,
+                    last_synced_iso=doc.get("last_synced"),
+                    last_synced_display=doc.get("last_synced_display"),
+                    metadata=meta,
+                    constituent_history=hist,
+                )
+                updated += 1
+        except Exception as e:
+            logger.warning(f"Error initializing constituent_history: {e}")
+        return updated
+
     def _ensure_initial_db_seed(self):
         """Pre-populates MongoDB and SQLite on initial boot if empty."""
         try:
@@ -214,8 +355,29 @@ class IndexStocksProvider:
             logger.warning(f"Error ensuring initial index stocks DB seed: {e}")
 
     def get_all_indices(self) -> List[Dict[str, Any]]:
-        """Returns metadata and count summary for all 10 indices from DB."""
-        db_data = db_store.load_index_constituents_db() or {}
+        """Returns metadata and count summary for all 10 indices from DB without transferring full stock lists."""
+        db_data = {}
+        if db_store.db is not None:
+            try:
+                docs = list(db_store.db["index_constituents"].aggregate([
+                    {"$project": {
+                        "_id": 1,
+                        "index_key": 1,
+                        "total_stocks": {"$ifNull": ["$total_stocks", {"$size": {"$ifNull": ["$stocks", []]}}]},
+                        "last_synced_display": 1,
+                        "last_synced": 1,
+                        "metadata": 1,
+                    }}
+                ]))
+                for d in docs:
+                    k = d.get("_id") or d.get("index_key")
+                    if k:
+                        db_data[k] = d
+            except Exception as e:
+                logger.warning(f"MongoDB projected get_all_indices fallback: {e}")
+                db_data = {}
+        if not db_data:
+            db_data = db_store.load_index_constituents_db() or {}
         indices_list = []
         
         for key, reg in INDEX_REGISTRY.items():
@@ -264,7 +426,11 @@ class IndexStocksProvider:
         reg = INDEX_REGISTRY.get(key, {})
         record = db_store.load_index_constituents_db(key) or {}
         stocks = record.get("stocks", [])
-        
+        hist = record.get("constituent_history") or []
+        if not hist and stocks:
+            today_iso = now_ist().strftime("%Y-%m-%d")
+            hist = self.merge_constituent_history(None, None, stocks, today_iso, initial_date_added=None)
+
         return {
             "key": key,
             "name": reg.get("name", key),
@@ -275,7 +441,8 @@ class IndexStocksProvider:
             "last_synced": record.get("last_synced_display") or record.get("last_synced") or "Never",
             "category": reg.get("category", ""),
             "icon": reg.get("icon", "🏛️"),
-            "stocks": stocks
+            "stocks": stocks,
+            "constituent_history": hist,
         }
 
     def get_sync_status(self) -> Dict[str, Any]:
@@ -331,6 +498,8 @@ class IndexStocksProvider:
         total_updated = 0
         changes_by_index = {}
         errors = []
+        all_exited_by_sym: Dict[str, List[Dict[str, Any]]] = {}
+        event_date_iso = now_ist().strftime("%Y-%m-%d")
 
         try:
             total_items = len(INDEX_REGISTRY)
@@ -351,6 +520,7 @@ class IndexStocksProvider:
                     # Check delta vs current stored
                     existing_doc = db_store.load_index_constituents_db(key) or {}
                     existing_stocks = existing_doc.get("stocks", [])
+                    existing_history = existing_doc.get("constituent_history") or []
                     old_syms_map = {s.get("symbol"): s for s in existing_stocks if isinstance(s, dict) and s.get("symbol")}
                     new_syms_map = {s.get("symbol"): s for s in stocks if isinstance(s, dict) and s.get("symbol")}
 
@@ -360,10 +530,27 @@ class IndexStocksProvider:
                     entered_list = [new_syms_map[s] for s in entered_symbols]
                     exited_list = [old_syms_map[s] for s in exited_symbols]
 
+                    for ex_item in exited_list:
+                        ex_sym = str(ex_item.get("symbol") or "").strip().upper()
+                        if ex_sym:
+                            all_exited_by_sym.setdefault(ex_sym, []).append({
+                                "index_key": key,
+                                "date_exited": event_date_iso,
+                                "company_name": ex_item.get("company_name") or ex_sym,
+                            })
+
                     total_added += len(entered_list)
                     total_exited_all += len(exited_list)
                     if len(entered_list) > 0 or len(exited_list) > 0 or len(stocks) != len(existing_stocks):
                         total_updated += 1
+
+                    updated_history = self.merge_constituent_history(
+                        existing_history=existing_history,
+                        existing_stocks=existing_stocks,
+                        new_stocks=stocks,
+                        event_date_iso=event_date_iso,
+                        initial_date_added=None,
+                    )
 
                     index_change = {
                         "key": key,
@@ -394,11 +581,48 @@ class IndexStocksProvider:
                             "official_target": reg["official_size"],
                             "actual_count": len(stocks),
                             "last_changes": index_change
-                        }
+                        },
+                        constituent_history=updated_history,
                     )
                     synced_counts[reg["name"]] = len(stocks)
                 else:
                     synced_counts[reg["name"]] = 0
+
+            # Retention for Case 2: stocks that exited ALL 10 official indices stay tracked for EOD sync
+            if all_exited_by_sym:
+                try:
+                    all_now = db_store.load_index_constituents_db() or {}
+                    still_in_any = set()
+                    for idx_doc in all_now.values():
+                        for st_item in (idx_doc.get("stocks") or []):
+                            sym = str(st_item.get("symbol") or "").strip().upper() if isinstance(st_item, dict) else str(st_item).strip().upper()
+                            if sym:
+                                still_in_any.add(sym)
+                    fully_exited_entries = []
+                    for sym, ex_meta_list in all_exited_by_sym.items():
+                        if sym not in still_in_any:
+                            fully_exited_entries.append({
+                                "symbol": sym,
+                                "company_name": ex_meta_list[0].get("company_name") or sym,
+                                "source": "exited_index",
+                                "exited_from": [
+                                    {"index_key": x["index_key"], "date_exited": x["date_exited"]}
+                                    for x in ex_meta_list
+                                ],
+                                "sync_active": True,
+                                "status": "EXITED_INDEX",
+                            })
+                    if fully_exited_entries:
+                        db_store.upsert_custom_tracked_stocks_db(fully_exited_entries)
+                except Exception as ex_ret:
+                    logger.warning(f"Error retaining exited index stocks in custom_tracked_stocks: {ex_ret}")
+
+            # Clear momentum smallcases constituent cache so rebalances immediately see updated intervals
+            try:
+                from modules.momentum_smallcases.momentum_smallcases_store import clear_constituents_cache
+                clear_constituents_cache()
+            except Exception:
+                pass
 
             duration = round(time.time() - start_time, 2)
             now_final = format_ist_display(datetime.datetime.now(datetime.timezone.utc).isoformat())

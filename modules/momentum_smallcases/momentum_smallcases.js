@@ -10,7 +10,14 @@
     // State caches
     let activeSubView = 'strategies'; // 'strategies' | 'strategy-detail' | 'manual-indices'
     let strategiesCache = [];
+    let compareStrategiesCache = [];
     let strategiesSummary = {};
+
+    function getStrategyRunsCount(s) {
+        if (!s) return 0;
+        if (Array.isArray(s.runs)) return s.runs.length;
+        return Number(s.runs_count || 0);
+    }
     let currentStrategy = null;
     let selectedRunIndex = null;
     let indicesCatalogCache = [];
@@ -306,10 +313,32 @@
         return '₹' + absStr;
     }
 
+    function formatOrdinalDay(dayNum) {
+        const d = parseInt(dayNum, 10);
+        if (isNaN(d)) return String(dayNum || '');
+        const mod100 = d % 100;
+        if (mod100 >= 11 && mod100 <= 13) return `${d}th`;
+        switch (d % 10) {
+            case 1: return `${d}st`;
+            case 2: return `${d}nd`;
+            case 3: return `${d}rd`;
+            default: return `${d}th`;
+        }
+    }
+
     function formatDateDisplay(isoOrStr) {
         if (!isoOrStr) return '—';
         try {
-            const d = new Date(isoOrStr);
+            const s = String(isoOrStr).trim();
+            // Parse bare YYYY-MM-DD as local calendar date so UTC-negative timezones never shift backward 1 day
+            const isoMatch = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+            if (isoMatch) {
+                const localD = new Date(Number(isoMatch[1]), Number(isoMatch[2]) - 1, Number(isoMatch[3]));
+                if (!isNaN(localD.getTime())) {
+                    return localD.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+                }
+            }
+            const d = new Date(s);
             if (!isNaN(d.getTime())) {
                 return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
             }
@@ -389,28 +418,38 @@
         return isNaN(t) ? 0 : t;
     }
 
-    // Client-side parser for manual index format: [stockname, DD/MM/YYYY]
+    // Client-side parser for manual index format: [stockname, DD/MM/YYYY] or [stockname, DD/MM/YYYY, DD/MM/YYYY]
+    function normalizeClientDateStr(rawDt) {
+        let dt = String(rawDt || '').trim().replace(/[\-\.]/g, '/');
+        const parts = dt.split('/');
+        if (parts.length === 3) {
+            const d = parseInt(parts[0], 10);
+            const m = parseInt(parts[1], 10);
+            let y = parseInt(parts[2], 10);
+            if (!isNaN(d) && !isNaN(m) && !isNaN(y)) {
+                if (y < 100) y += 2000;
+                return `${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}/${y}`;
+            }
+        }
+        return dt;
+    }
+
     function parseStocksClient(stocksStr) {
         if (!stocksStr || typeof stocksStr !== 'string') return [];
         const results = [];
         const seen = new Set();
-        const pattern = /\[\s*([^,\]\r\n]+?)\s*,\s*([0-9]{1,2}[\/\-\.][0-9]{1,2}[\/\-\.][0-9]{2,4})\s*\]/g;
+        const pattern = /\[\s*([^,\]\r\n]+?)\s*,\s*([0-9]{1,2}[\/\-\.][0-9]{1,2}[\/\-\.][0-9]{2,4})(?:\s*,\s*([0-9]{1,2}[\/\-\.][0-9]{1,2}[\/\-\.][0-9]{2,4}))?\s*\]/g;
         let match;
         while ((match = pattern.exec(stocksStr)) !== null) {
             const sym = match[1].trim().toUpperCase();
-            let dt = match[2].trim().replace(/[\-\.]/g, '/');
-            const parts = dt.split('/');
-            if (parts.length === 3) {
-                let d = parseInt(parts[0], 10);
-                let m = parseInt(parts[1], 10);
-                let y = parseInt(parts[2], 10);
-                if (y < 100) y += 2000;
-                dt = `${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}/${y}`;
-            }
-            const key = sym + '_' + dt;
+            const dt = normalizeClientDateStr(match[2]);
+            const ex = match[3] ? normalizeClientDateStr(match[3]) : null;
+            const key = sym + '_' + dt + '_' + (ex || '');
             if (!seen.has(key)) {
                 seen.add(key);
-                results.push({ symbol: sym, date_added: dt });
+                const item = { symbol: sym, date_added: dt };
+                if (ex) item.date_exited = ex;
+                results.push(item);
             }
         }
 
@@ -536,6 +575,7 @@
             }
 
             strategiesCache = data.strategies || [];
+            compareStrategiesCache = [];
             strategiesSummary = data.summary || {};
 
             renderStrategiesStats();
@@ -608,7 +648,7 @@
         `;
 
         strategies.forEach(s => {
-            const isDraft = s.status === 'DRAFT' || !s.runs || s.runs.length === 0;
+            const isDraft = s.status === 'DRAFT' || getStrategyRunsCount(s) === 0;
             const statusBadge = isDraft
                 ? `<span class="badge" style="background: rgba(148, 163, 184, 0.15); color: #94a3b8; font-size: 11px; padding: 3px 8px; border-radius: 4px;">DRAFT</span>`
                 : `<span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-size: 11px; padding: 3px 8px; border-radius: 4px; font-weight: 700;">ACTIVE</span>`;
@@ -652,7 +692,7 @@
                     </td>
                     <td>
                         <div style="font-size: 12.5px; color: var(--text-primary);">
-                            <strong>${s.rebalance_day}th</strong> <span style="font-size: 11px; color: var(--text-secondary);">monthly</span>
+                            <strong>${escapeHtml(formatOrdinalDay(s.rebalance_day))}</strong> <span style="font-size: 11px; color: var(--text-secondary);">monthly</span>
                         </div>
                     </td>
                     <td style="text-align: right; font-family: monospace; font-size: 13px; font-weight: 600;">
@@ -667,9 +707,6 @@
                     </td>
                     <td style="text-align: right;">
                         <div style="display: inline-flex; gap: 6px; justify-content: flex-end; align-items: center;">
-                            <button type="button" class="msc-action-btn run" onclick="openRunAllModal('${escapeHtml(s.id)}')" title="Rebalance All (Init or Remaining Schedules)" style="background: rgba(99, 102, 241, 0.12); color: #818cf8; border-color: rgba(99, 102, 241, 0.3);">
-                                <span>⚡ Rebalance All</span>
-                            </button>
                             <button type="button" class="msc-action-btn view" onclick="openStrategyDetailView('${escapeHtml(s.id)}')" title="View Details & Timeline">
                                 <span>👁️ Details</span>
                             </button>
@@ -740,51 +777,58 @@
         document.getElementById('stratFormulaInput').value =
             '(50% * 1M price return + 30% * 2M price return + 10% * 5M price return + 10% * 9M price return ) / (1M Price Volatility + 3M Price Volatility)';
 
-        // Populate indices catalog
-        if (select) {
-            select.innerHTML = '<option value="">Loading indices...</option>';
-            try {
-                const res = await fetch('/api/momentum-smallcases/indices-catalog');
-                const data = await res.json();
-                if (data.success && Array.isArray(data.indices)) {
-                    indicesCatalogCache = data.indices;
-                    let optHtml = '';
-
-                    const manualIndices = indicesCatalogCache.filter(x => x.type === 'manual');
-                    const niftyIndices = indicesCatalogCache.filter(x => x.type === 'nifty');
-
-                    if (manualIndices.length > 0) {
-                        optHtml += `<optgroup label="📑 Manual Momentum Indices">`;
-                        manualIndices.forEach(idx => {
-                            optHtml += `<option value="${escapeHtml(idx.id)}">${escapeHtml(idx.name)} (${idx.stock_count || 0} stocks)</option>`;
-                        });
-                        optHtml += `</optgroup>`;
-                    }
-
-                    if (niftyIndices.length > 0) {
-                        optHtml += `<optgroup label="📊 Nifty Benchmark Indices">`;
-                        niftyIndices.forEach(idx => {
-                            optHtml += `<option value="${escapeHtml(idx.id)}">${escapeHtml(idx.name)} (${idx.stock_count || 0} stocks)</option>`;
-                        });
-                        optHtml += `</optgroup>`;
-                    }
-
-                    select.innerHTML = optHtml || '<option value="">No indices available</option>';
-                    checkStratDateAndIndexMatch();
-                } else {
-                    select.innerHTML = '<option value="">Failed to load indices</option>';
-                }
-            } catch (e) {
-                console.error('Error fetching indices catalog:', e);
-                select.innerHTML = '<option value="">Error loading catalog</option>';
-            }
-        }
-
         if (modal) modal.style.display = 'flex';
         setTimeout(() => {
             const input = document.getElementById('stratNameInput');
             if (input) input.focus();
-        }, 100);
+        }, 50);
+
+        const renderIndexCatalogSelect = (catalog) => {
+            let optHtml = '';
+            const manualIndices = catalog.filter(x => x.type === 'manual');
+            const niftyIndices = catalog.filter(x => x.type === 'nifty');
+
+            if (manualIndices.length > 0) {
+                optHtml += `<optgroup label="📑 Manual Momentum Indices">`;
+                manualIndices.forEach(idx => {
+                    optHtml += `<option value="${escapeHtml(idx.id)}">${escapeHtml(idx.name)} (${idx.stock_count || 0} stocks)</option>`;
+                });
+                optHtml += `</optgroup>`;
+            }
+
+            if (niftyIndices.length > 0) {
+                optHtml += `<optgroup label="📊 Nifty Benchmark Indices">`;
+                niftyIndices.forEach(idx => {
+                    optHtml += `<option value="${escapeHtml(idx.id)}">${escapeHtml(idx.name)} (${idx.stock_count || 0} stocks)</option>`;
+                });
+                optHtml += `</optgroup>`;
+            }
+
+            select.innerHTML = optHtml || '<option value="">No indices available</option>';
+            checkStratDateAndIndexMatch();
+        };
+
+        // Populate indices catalog (instant from cache if available, otherwise async while modal is already open)
+        if (select) {
+            if (Array.isArray(indicesCatalogCache) && indicesCatalogCache.length > 0) {
+                renderIndexCatalogSelect(indicesCatalogCache);
+            } else {
+                select.innerHTML = '<option value="">Loading indices...</option>';
+                try {
+                    const res = await fetch('/api/momentum-smallcases/indices-catalog');
+                    const data = await res.json();
+                    if (data.success && Array.isArray(data.indices)) {
+                        indicesCatalogCache = data.indices;
+                        renderIndexCatalogSelect(indicesCatalogCache);
+                    } else {
+                        select.innerHTML = '<option value="">Failed to load indices</option>';
+                    }
+                } catch (e) {
+                    console.error('Error fetching indices catalog:', e);
+                    select.innerHTML = '<option value="">Error loading catalog</option>';
+                }
+            }
+        }
     }
 
     async function checkStratDateAndIndexMatch() {
@@ -967,11 +1011,29 @@
 
             closeAddStrategyModal();
             alertToast(`Smallcase "${name}" created successfully!`, 'success');
-            await loadStrategiesList();
 
-            // Open detail view for new smallcase immediately
             if (data.strategy && data.strategy.id) {
-                openStrategyDetailView(data.strategy.id);
+                const created = data.strategy;
+                const summaryEntry = {
+                    ...created,
+                    runs_count: Array.isArray(created.runs) ? created.runs.length : 0
+                };
+                delete summaryEntry.runs;
+                delete summaryEntry.holdings;
+                delete summaryEntry.capital_logs;
+                strategiesCache = [summaryEntry, ...(strategiesCache || []).filter(s => s.id !== created.id)];
+                compareStrategiesCache = [];
+                strategiesSummary = {
+                    total_strategies: strategiesCache.length,
+                    active_strategies: strategiesCache.filter(s => s.status === 'ACTIVE').length,
+                    total_capital: strategiesCache.reduce((sum, s) => sum + Number(s.amount_to_invest || 0), 0),
+                    total_portfolio_value: strategiesCache.reduce((sum, s) => sum + Number(s.current_portfolio_value != null ? s.current_portfolio_value : (s.amount_to_invest || 0)), 0)
+                };
+                renderStrategiesStats();
+                renderStrategiesTable(strategiesCache);
+                openStrategyDetailView(created.id, null, created);
+            } else {
+                await loadStrategiesList();
             }
         } catch (err) {
             console.error('Error creating strategy:', err);
@@ -989,11 +1051,11 @@
     // =========================================================================
     // 3. STRATEGY DETAILS & EXECUTION TIMELINE VIEW
     // =========================================================================
-    async function openStrategyDetailView(strategyId, optRunIndex = null) {
+    async function openStrategyDetailView(strategyId, optRunIndex = null, preloadedStrategy = null) {
         switchMomentumSubView('strategy-detail');
 
         const container = document.getElementById('sd-selected-run-container');
-        if (container) {
+        if (container && !(preloadedStrategy && preloadedStrategy.id === strategyId)) {
             container.innerHTML = (typeof window.createBrandLoaderHTML === 'function')
                 ? window.createBrandLoaderHTML({
                     title: 'Loading Smallcase Details...',
@@ -1009,8 +1071,13 @@
         }
 
         try {
-            const res = await fetch(`/api/momentum-smallcases/strategies/${encodeURIComponent(strategyId)}`);
-            const data = await res.json();
+            let data;
+            if (preloadedStrategy && preloadedStrategy.id === strategyId) {
+                data = { success: true, strategy: preloadedStrategy };
+            } else {
+                const res = await fetch(`/api/momentum-smallcases/strategies/${encodeURIComponent(strategyId)}`);
+                data = await res.json();
+            }
             if (!data.success || !data.strategy) {
                 if (container) {
                     container.innerHTML = `<div style="text-align: center; padding: 30px; color: #ef4444;">Failed to load smallcase details.</div>`;
@@ -1045,7 +1112,7 @@
             }
             document.getElementById('sd-start-date').innerText = startText;
             document.getElementById('sd-stock-counts').innerText = `Top ${s.no_of_stocks} (Green) / Exit Rank ${s.exit_regime_ranking} (Yellow)`;
-            document.getElementById('sd-rebal-day').innerText = `${s.rebalance_day}th monthly`;
+            document.getElementById('sd-rebal-day').innerText = `${formatOrdinalDay(s.rebalance_day)} monthly`;
             const trimEl = document.getElementById('sd-trim-existing');
             if (trimEl) {
                 trimEl.innerText = (s.trim_existing === false) ? 'No' : 'Yes';
@@ -1393,12 +1460,18 @@
         const snapPnlPct = snapCap > 0 ? (snapPnl / snapCap) * 100 : 0;
         const snapColor = snapPnl >= 0 ? '#10b981' : '#ef4444';
 
+        const wdrTypeLabel = run.withdrawal_type_label || (run.withdrawal_type === 'TO_WALLET' ? 'To Wallet' : (run.withdrawal_type === 'OUT_OF_WALLET' ? 'Out of Wallet' : ''));
+        const wdrTypeBadge = (isWithdrawal && wdrTypeLabel)
+            ? `<span class="badge" style="font-size: 11px; padding: 2px 8px; border-radius: 9999px; background: ${run.withdrawal_type === 'TO_WALLET' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)'}; color: ${run.withdrawal_type === 'TO_WALLET' ? '#10b981' : '#f59e0b'}; border: 1px solid ${run.withdrawal_type === 'TO_WALLET' ? 'rgba(16, 185, 129, 0.35)' : 'rgba(245, 158, 11, 0.35)'};">${escapeHtml(wdrTypeLabel)}</span>`
+            : '';
+
         let html = `
             <!-- Run Summary Banner -->
             <div class="msc-run-summary-banner" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 14px 18px; margin-bottom: 18px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
                 <div class="msc-run-summary-info">
-                    <div style="font-size: 16px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+                    <div style="font-size: 16px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                         <span style="display: inline-flex; align-items: center;">${isInit ? '🎯' : (isWithdrawal ? '💸' : getRebalanceIconSVG(17, 2.4))}</span> <span>${escapeHtml(runTitle)}</span>
+                        ${wdrTypeBadge}
                     </div>
                     <div style="font-size: 12.5px; color: var(--text-secondary); margin-top: 4px;">
                         ${dateNote} ${isWithdrawal ? `&bull; Withdrawn: <strong style="color: #3b82f6;">₹${formatCurrency(run.total_withdrawn_amount || 0)}</strong> &bull; Realized P&L: <strong style="color: ${(run.total_withdrawn_pnl || 0) >= 0 ? '#10b981' : '#ef4444'};">${(run.total_withdrawn_pnl || 0) >= 0 ? '+' : ''}₹${formatCurrency(run.total_withdrawn_pnl || 0)}</strong>` : `&bull; Universe eligible stocks: <strong>${run.eligible_stocks_count || rankedStocks.length}</strong> &bull; Trim Overweight: <strong>${(currentStrategy && currentStrategy.trim_existing === false) ? 'No' : 'Yes'}</strong> &bull; Days/Mo: <strong>${(currentStrategy && currentStrategy.trading_days_per_month) || 30}d</strong>`}
@@ -1421,11 +1494,12 @@
                 <div class="msc-card-section" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 18px; margin-bottom: 22px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 8px;">
                         <div>
-                            <h4 style="margin: 0; font-size: 14.5px; font-weight: 700; color: #f59e0b; display: flex; align-items: center; gap: 6px;">
+                            <h4 style="margin: 0; font-size: 14.5px; font-weight: 700; color: #f59e0b; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                                 <span>💸</span> <span>Liquidated Positions (${(run.transactions || []).length} stocks)</span>
+                                ${wdrTypeBadge}
                             </h4>
                             <div style="font-size: 11.5px; color: var(--text-secondary); margin-top: 3px;">
-                                Capital proceeds withdrawn from smallcase portfolio at CMP.
+                                ${run.withdrawal_type === 'TO_WALLET' ? 'Net liquidation proceeds credited to smallcase wallet.' : 'Liquidated and paid out of wallet (wallet balance unchanged).'}
                             </div>
                         </div>
                         <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap; font-size: 12px;">
@@ -1855,12 +1929,26 @@
             html += `<tr><td colspan="6" style="text-align: center; padding: 20px; color: var(--text-secondary);">No capital logs recorded.</td></tr>`;
         } else {
             capitalLogs.slice().reverse().forEach(log => {
+                const logType = String(log.type || 'LOG');
+                let badgeBg = 'var(--bg-subtle)';
+                let badgeBorder = 'var(--border-color)';
+                let badgeColor = 'var(--text-primary)';
+                if (logType === 'WITHDRAWAL_TO_WALLET') {
+                    badgeBg = 'rgba(16, 185, 129, 0.14)';
+                    badgeBorder = 'rgba(16, 185, 129, 0.35)';
+                    badgeColor = '#10b981';
+                } else if (logType === 'WITHDRAWAL_OUT_OF_WALLET' || logType === 'WITHDRAWAL') {
+                    badgeBg = 'rgba(245, 158, 11, 0.14)';
+                    badgeBorder = 'rgba(245, 158, 11, 0.35)';
+                    badgeColor = '#f59e0b';
+                }
+                const logDateStr = log.withdrawal_date ? `${formatDateDisplay(log.withdrawal_date)} · ` : '';
                 html += `
                     <tr>
-                        <td style="font-size: 11.5px; color: var(--text-secondary);">${formatDateTimeDisplay(log.timestamp)}</td>
+                        <td style="font-size: 11.5px; color: var(--text-secondary);">${logDateStr}${formatDateTimeDisplay(log.timestamp)}</td>
                         <td>
-                            <span class="badge" style="background: var(--bg-subtle); border: 1px solid var(--border-color); color: var(--text-primary); font-size: 10.5px; padding: 2px 6px;">
-                                ${escapeHtml(log.type || 'LOG')}
+                            <span class="badge" style="background: ${badgeBg}; border: 1px solid ${badgeBorder}; color: ${badgeColor}; font-size: 10.5px; padding: 2px 6px;">
+                                ${escapeHtml(logType)}
                             </span>
                         </td>
                         <td style="text-align: right; font-family: monospace;">₹${formatCurrency(log.amount || 0)}</td>
@@ -1935,6 +2023,9 @@
         const runs = strategy.runs || [];
         const rebalRuns = runs.filter(r => r && r.run_type === 'REBALANCE');
         if (rebalRuns.length === 0) {
+            if (strategy.last_stepup_amount !== undefined && strategy.last_stepup_amount !== null) {
+                return Number(strategy.last_stepup_amount);
+            }
             // Only Init has been executed (or no runs), so return null (show empty)
             return null;
         }
@@ -2087,9 +2178,11 @@
         if (strategyId) {
             const cached = (strategiesCache || []).find(s => s.id === strategyId);
             if (currentStrategy && currentStrategy.id === strategyId) {
-                const curLen = (currentStrategy.runs || []).length;
-                const cacheLen = (cached && Array.isArray(cached.runs)) ? cached.runs.length : -1;
-                strat = (cacheLen > curLen) ? cached : currentStrategy;
+                const curLen = getStrategyRunsCount(currentStrategy);
+                const cacheLen = cached ? getStrategyRunsCount(cached) : -1;
+                const curHasRuns = Array.isArray(currentStrategy.runs);
+                const cacheHasRuns = Boolean(cached && Array.isArray(cached.runs));
+                strat = (cacheLen > curLen || (!curHasRuns && cacheHasRuns)) ? cached : currentStrategy;
             } else {
                 strat = cached || currentStrategy;
             }
@@ -2101,7 +2194,7 @@
             return;
         }
 
-        const isDraft = currentStrategy.status === 'DRAFT' || !currentStrategy.runs || currentStrategy.runs.length === 0;
+        const isDraft = currentStrategy.status === 'DRAFT' || getStrategyRunsCount(currentStrategy) === 0;
         const todayStr = getTodayISTStr();
         const nextRebalStr = (currentStrategy.next_rebalance_date || '').substring(0, 10);
         if (!isDraft && nextRebalStr && nextRebalStr > todayStr) {
@@ -2358,6 +2451,153 @@
     // =========================================================================
     // 4D. STRATEGY WITHDRAWAL POPUP & LOGIC
     // =========================================================================
+    let _withdrawalDateBounds = { min: '', max: '' };
+    let _withdrawalPriceFetchSeq = 0;
+
+    function computeWithdrawalDateBounds(strategy) {
+        const runs = (strategy && strategy.runs) || [];
+        let lastRebalStr = '';
+        runs.forEach(r => {
+            if (r && (r.run_type === 'INIT' || r.run_type === 'REBALANCE')) {
+                const d = String(r.executed_date || r.scheduled_date || '').substring(0, 10);
+                if (d && (!lastRebalStr || d > lastRebalStr)) {
+                    lastRebalStr = d;
+                }
+            }
+        });
+        if (!lastRebalStr && strategy && strategy.start_date) {
+            lastRebalStr = String(strategy.start_date).substring(0, 10);
+        }
+
+        const todayStr = getTodayISTStr();
+        const nextRebalStr = String((strategy && strategy.next_rebalance_date) || '').substring(0, 10);
+        let maxStr = todayStr;
+        if (nextRebalStr && nextRebalStr < todayStr) {
+            maxStr = nextRebalStr;
+        }
+        if (lastRebalStr && maxStr < lastRebalStr) {
+            maxStr = lastRebalStr;
+        }
+        return { min: lastRebalStr, max: maxStr, today: todayStr, nextRebal: nextRebalStr };
+    }
+
+    function getSelectedWithdrawalDestination() {
+        const checked = document.querySelector('input[name="mscWithdrawDestination"]:checked');
+        return checked ? checked.value : '';
+    }
+
+    function handleWithdrawalDestinationChange() {
+        const mode = getSelectedWithdrawalDestination();
+        const hasSelection = mode === 'TO_WALLET' || mode === 'OUT_OF_WALLET';
+        const isToWallet = mode === 'TO_WALLET';
+        const wLbl = document.getElementById('mscWithdrawOptWalletLbl');
+        const oLbl = document.getElementById('mscWithdrawOptOutLbl');
+        if (wLbl) wLbl.style.borderColor = (hasSelection && isToWallet) ? '#10b981' : 'var(--border-color)';
+        if (oLbl) oLbl.style.borderColor = (hasSelection && !isToWallet) ? '#f59e0b' : 'var(--border-color)';
+
+        const hintEl = document.getElementById('mscWithdrawDestHint');
+        if (hintEl) {
+            if (!hasSelection) {
+                hintEl.innerText = 'Select Withdraw to Wallet or Out of Wallet';
+                hintEl.style.color = 'var(--text-secondary)';
+            } else if (isToWallet) {
+                hintEl.innerText = 'Net proceeds added to smallcase wallet';
+                hintEl.style.color = '#10b981';
+            } else {
+                hintEl.innerText = 'Paid out of wallet (wallet unchanged)';
+                hintEl.style.color = '#f59e0b';
+            }
+        }
+        updateWithdrawalSummary();
+    }
+
+    async function loadWithdrawalPricesForDate(dateStr) {
+        if (!currentStrategy || !dateStr) return;
+        const seq = ++_withdrawalPriceFetchSeq;
+        const statusEl = document.getElementById('mscWithdrawPriceStatus');
+        if (statusEl) {
+            statusEl.innerText = `⏳ Loading closing prices for ${formatDateDisplay(dateStr)}...`;
+            statusEl.style.color = '#0ea5e9';
+        }
+        setSmallcaseModalLoader('strategyWithdrawalModal', true, {
+            title: 'Loading Closing Prices...',
+            badge: `Date: ${formatDateDisplay(dateStr)}`,
+            subtitle: 'Fetching daily closing quotes to prefill editable withdrawal prices...'
+        });
+
+        try {
+            const res = await fetch(`/api/momentum-smallcases/strategies/${encodeURIComponent(currentStrategy.id)}/withdrawal-prices`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ date: dateStr })
+            });
+            const data = await res.json();
+            if (seq !== _withdrawalPriceFetchSeq) return;
+            if (!res.ok || !data.success) {
+                throw new Error(data.error || 'Could not fetch closing prices');
+            }
+
+            const pricesMap = data.prices || {};
+            const rows = document.querySelectorAll('#mscWithdrawalTbody tr');
+            rows.forEach(tr => {
+                const idx = tr.getAttribute('data-index');
+                const sym = (tr.getAttribute('data-symbol') || '').toUpperCase();
+                const info = pricesMap[sym];
+                if (info && info.price > 0) {
+                    const px = Number(info.price);
+                    tr.setAttribute('data-cmp', px);
+                    const priceInput = tr.querySelector('.msc-withdraw-price-input');
+                    if (priceInput) {
+                        priceInput.value = px.toFixed(2);
+                    }
+                    const metaEl = document.getElementById(`mscWithdrawPriceMeta_${idx}`);
+                    if (metaEl) {
+                        if (info.price_date) {
+                            metaEl.innerText = info.exact_match
+                                ? `Close: ${formatDateDisplay(info.price_date)}`
+                                : `Prev close: ${formatDateDisplay(info.price_date)}`;
+                        } else {
+                            metaEl.innerText = 'Fallback CMP';
+                        }
+                    }
+                }
+            });
+
+            if (statusEl) {
+                statusEl.innerText = `✓ Closing prices loaded for ${formatDateDisplay(dateStr)} (editable)`;
+                statusEl.style.color = '#10b981';
+            }
+        } catch (err) {
+            if (seq !== _withdrawalPriceFetchSeq) return;
+            console.error('Error loading withdrawal closing prices:', err);
+            if (statusEl) {
+                statusEl.innerText = `⚠️ ${err.message}`;
+                statusEl.style.color = '#f59e0b';
+            }
+        } finally {
+            if (seq === _withdrawalPriceFetchSeq) {
+                setSmallcaseModalLoader('strategyWithdrawalModal', false);
+                updateWithdrawalSummary();
+            }
+        }
+    }
+
+    function handleWithdrawalDateChange() {
+        const dateInput = document.getElementById('mscWithdrawalDate');
+        if (!dateInput) return;
+        const val = (dateInput.value || '').substring(0, 10);
+        const { min, max } = _withdrawalDateBounds;
+        if (!val) return;
+        if (max && val > max) {
+            alertToast(`Withdrawal date cannot exceed ${formatDateDisplay(max)} (no future dates or dates past next rebalance).`, 'warning');
+            dateInput.value = max;
+        } else if (min && val < min) {
+            alertToast(`Withdrawal date cannot be earlier than last rebalance (${formatDateDisplay(min)}).`, 'warning');
+            dateInput.value = min;
+        }
+        loadWithdrawalPricesForDate(dateInput.value);
+    }
+
     function openStrategyWithdrawalModal() {
         if (!currentStrategy) {
             alertToast('No active smallcase selected.', 'error');
@@ -2376,6 +2616,7 @@
 
         const capVal = Number(currentStrategy.total_capital != null ? currentStrategy.total_capital : (currentStrategy.amount_to_invest || 0));
         const portVal = Number(currentStrategy.current_portfolio_value != null ? currentStrategy.current_portfolio_value : capVal);
+        const walletVal = Number(currentStrategy.current_wallet || 0);
         const capEl = document.getElementById('mscWithdrawCurrentCap');
         if (capEl) capEl.innerText = `₹${formatCurrency(capVal)}`;
         const portEl = document.getElementById('mscWithdrawPortfolioVal');
@@ -2383,13 +2624,36 @@
             portEl.innerText = `₹${formatCurrency(portVal)}`;
             portEl.style.color = portVal >= capVal ? '#10b981' : '#ef4444';
         }
+        const walletEl = document.getElementById('mscWithdrawCurrentWallet');
+        if (walletEl) walletEl.innerText = `₹${formatCurrency(walletVal)}`;
+
+        // Configure Date bounds: [last rebalance/init, min(next rebalance, today)]
+        _withdrawalDateBounds = computeWithdrawalDateBounds(currentStrategy);
+        const dateInput = document.getElementById('mscWithdrawalDate');
+        const rangeHint = document.getElementById('mscWithdrawDateRangeHint');
+        if (dateInput) {
+            if (_withdrawalDateBounds.min) dateInput.min = _withdrawalDateBounds.min;
+            else dateInput.removeAttribute('min');
+            dateInput.max = _withdrawalDateBounds.max;
+            dateInput.value = _withdrawalDateBounds.max;
+        }
+        if (rangeHint) {
+            const minTxt = _withdrawalDateBounds.min ? formatDateDisplay(_withdrawalDateBounds.min) : 'Start';
+            const maxTxt = _withdrawalDateBounds.max ? formatDateDisplay(_withdrawalDateBounds.max) : 'Today';
+            rangeHint.innerText = `Active: ${minTxt} – ${maxTxt}`;
+        }
+
+        // No default destination — require explicit user selection
+        document.querySelectorAll('input[name="mscWithdrawDestination"]').forEach(r => {
+            r.checked = false;
+        });
 
         const commentsInput = document.getElementById('mscWithdrawalComments');
         if (commentsInput) commentsInput.value = '';
 
         const submitBtn = document.getElementById('mscSubmitWithdrawalBtn');
         if (submitBtn) {
-            submitBtn.disabled = true;
+            submitBtn.disabled = false;
             submitBtn.innerHTML = '<span>💸</span> <span>Confirm Withdrawal</span>';
         }
 
@@ -2418,12 +2682,13 @@
                         <div style="font-weight: 700; color: var(--text-primary);">${qty.toLocaleString('en-IN')}</div>
                         <div style="font-size: 10.5px; color: var(--text-secondary);">Avg: ₹${formatCurrency(buyPrice)}</div>
                     </td>
-                    <td style="text-align: right; font-family: monospace; font-weight: 700; color: var(--text-primary);">
-                        ₹${formatCurrency(cmp)}
+                    <td style="text-align: right; font-family: monospace;">
+                        <input type="number" step="0.01" min="0.01" value="${cmp.toFixed(2)}" class="msc-modal-input msc-withdraw-price-input" data-index="${idx}" oninput="updateWithdrawalSummary()" onchange="updateWithdrawalSummary()" style="width: 105px; padding: 5px 8px; font-family: monospace; font-size: 12px; font-weight: 700; text-align: right;">
+                        <div id="mscWithdrawPriceMeta_${idx}" style="font-size: 10px; color: var(--text-secondary); margin-top: 2px;">CMP: ₹${formatCurrency(cmp)}</div>
                     </td>
                     <td style="text-align: right; font-family: monospace; font-weight: 700; color: ${pnlColor};">
-                        <div>${sign}₹${formatCurrency(pnl)}</div>
-                        <div style="font-size: 10.5px; font-weight: 600;">${sign}${pnlPct.toFixed(2)}%</div>
+                        <div id="mscWithdrawRowHoldingPnl_${idx}">${sign}₹${formatCurrency(pnl)}</div>
+                        <div id="mscWithdrawRowHoldingPnlPct_${idx}" style="font-size: 10.5px; font-weight: 600;">${sign}${pnlPct.toFixed(2)}%</div>
                     </td>
                     <td style="text-align: center;">
                         <div style="display: inline-flex; align-items: center; justify-content: center; gap: 5px;">
@@ -2442,12 +2707,17 @@
             `;
         }).join('');
 
-        updateWithdrawalSummary();
+        handleWithdrawalDestinationChange();
         const modal = document.getElementById('strategyWithdrawalModal');
         if (modal) modal.style.display = 'flex';
+        if (dateInput && dateInput.value) {
+            loadWithdrawalPricesForDate(dateInput.value);
+        }
     }
 
     function closeStrategyWithdrawalModal() {
+        _withdrawalPriceFetchSeq++;
+        setSmallcaseModalLoader('strategyWithdrawalModal', false);
         const modal = document.getElementById('strategyWithdrawalModal');
         if (modal) modal.style.display = 'none';
     }
@@ -2475,12 +2745,18 @@
         rows.forEach(tr => {
             const qtyIn = tr.querySelector('.msc-withdraw-qty-input');
             const cmtIn = tr.querySelector('.msc-withdraw-comment-input');
+            const priceIn = tr.querySelector('.msc-withdraw-price-input');
+            const cmp = parseFloat(tr.getAttribute('data-cmp')) || 0;
             if (qtyIn) qtyIn.value = '0';
             if (cmtIn) cmtIn.value = '';
+            if (priceIn && cmp > 0) priceIn.value = cmp.toFixed(2);
         });
         const genCmt = document.getElementById('mscWithdrawalComments');
         if (genCmt) genCmt.value = '';
-        updateWithdrawalSummary();
+        document.querySelectorAll('input[name="mscWithdrawDestination"]').forEach(r => {
+            r.checked = false;
+        });
+        handleWithdrawalDestinationChange();
     }
 
     function updateWithdrawalSummary() {
@@ -2490,12 +2766,30 @@
         let totalAmount = 0.0;
         let totalCost = 0.0;
         let totalPnl = 0.0;
+        let hasInvalidPrice = false;
 
         rows.forEach(tr => {
             const idx = tr.getAttribute('data-index');
             const maxQty = parseInt(tr.getAttribute('data-max-qty'), 10) || 0;
             const buyPrice = parseFloat(tr.getAttribute('data-buy-price')) || 0;
-            const cmp = parseFloat(tr.getAttribute('data-cmp')) || buyPrice;
+            const fallbackCmp = parseFloat(tr.getAttribute('data-cmp')) || buyPrice;
+            const priceInput = tr.querySelector('.msc-withdraw-price-input');
+            const parsedPrice = priceInput ? parseFloat(priceInput.value) : fallbackCmp;
+            const cmp = (!isNaN(parsedPrice) && parsedPrice > 0) ? parsedPrice : 0;
+
+            const holdPnlEl = document.getElementById(`mscWithdrawRowHoldingPnl_${idx}`);
+            const holdPnlPctEl = document.getElementById(`mscWithdrawRowHoldingPnlPct_${idx}`);
+            if (holdPnlEl && holdPnlPctEl && cmp > 0) {
+                const fullHoldPnl = (cmp - buyPrice) * maxQty;
+                const fullHoldPct = buyPrice > 0 ? ((cmp - buyPrice) / buyPrice * 100) : 0;
+                const hPos = fullHoldPnl >= 0;
+                const hSign = hPos ? '+' : '';
+                const hColor = hPos ? '#10b981' : '#ef4444';
+                holdPnlEl.innerText = `${hSign}₹${formatCurrency(fullHoldPnl)}`;
+                holdPnlPctEl.innerText = `${hSign}${fullHoldPct.toFixed(2)}%`;
+                holdPnlEl.parentElement.style.color = hColor;
+            }
+
             const input = tr.querySelector('.msc-withdraw-qty-input');
             const valSpan = document.getElementById(`mscWithdrawVal_${idx}`);
             const pnlSpan = document.getElementById(`mscWithdrawPnl_${idx}`);
@@ -2505,6 +2799,10 @@
             if (reqQty > maxQty) {
                 reqQty = maxQty;
                 if (input) input.value = maxQty;
+            }
+
+            if (reqQty > 0 && cmp <= 0) {
+                hasInvalidPrice = true;
             }
 
             const rowVal = reqQty * cmp;
@@ -2559,39 +2857,76 @@
             pnlEl.style.color = totalShares > 0 ? (isPos ? '#10b981' : '#ef4444') : 'var(--text-secondary)';
         }
 
+        const destMode = getSelectedWithdrawalDestination();
         if (submitBtn) {
-            submitBtn.disabled = totalShares === 0;
+            submitBtn.disabled = false;
+            submitBtn.title = !destMode
+                ? 'Select Withdrawal Destination and quantities to confirm withdrawal'
+                : '';
         }
     }
 
     async function submitStrategyWithdrawal() {
         if (!currentStrategy || isSubmitting) return;
 
+        const withdrawTo = getSelectedWithdrawalDestination();
+        if (!withdrawTo) {
+            alertToast('Please select a Withdrawal Destination (Withdraw to Wallet or Out of Wallet).', 'info');
+            const wRadio = document.getElementById('mscWithdrawDestWallet');
+            if (wRadio) wRadio.focus();
+            return;
+        }
+
+        const dateInput = document.getElementById('mscWithdrawalDate');
+        const withdrawalDate = (dateInput?.value || '').substring(0, 10);
+        const { min, max } = _withdrawalDateBounds;
+        if (!withdrawalDate) {
+            alertToast('Please select a Date of Withdrawal.', 'info');
+            if (dateInput) dateInput.focus();
+            return;
+        }
+        if ((max && withdrawalDate > max) || (min && withdrawalDate < min)) {
+            const minTxt = min ? formatDateDisplay(min) : 'Start';
+            const maxTxt = max ? formatDateDisplay(max) : 'Today';
+            alertToast(`Please select a valid withdrawal date between ${minTxt} and ${maxTxt}.`, 'info');
+            if (dateInput) dateInput.focus();
+            return;
+        }
+
         const batchComments = (document.getElementById('mscWithdrawalComments')?.value || '').trim();
         const rows = document.querySelectorAll('#mscWithdrawalTbody tr');
         const withdrawals = [];
 
-        rows.forEach(tr => {
+        for (const tr of rows) {
             const sym = tr.getAttribute('data-symbol');
             const maxQty = parseInt(tr.getAttribute('data-max-qty'), 10) || 0;
-            const cmp = parseFloat(tr.getAttribute('data-cmp')) || 0;
+            const priceInput = tr.querySelector('.msc-withdraw-price-input');
+            const rawPriceStr = priceInput ? String(priceInput.value || '').trim() : '';
+            const cmp = priceInput ? parseFloat(rawPriceStr) : (parseFloat(tr.getAttribute('data-cmp')) || 0);
             const qtyInput = tr.querySelector('.msc-withdraw-qty-input');
             const commentInput = tr.querySelector('.msc-withdraw-comment-input');
             const reqQty = parseInt(qtyInput?.value, 10) || 0;
             const rowComment = (commentInput?.value || '').trim() || batchComments;
 
             if (reqQty > 0 && reqQty <= maxQty) {
+                if (!rawPriceStr || !isFinite(cmp) || cmp <= 0) {
+                    alertToast(`Please enter a valid positive withdrawal price for ${sym}.`, 'info');
+                    if (priceInput) priceInput.focus();
+                    return;
+                }
                 withdrawals.push({
                     symbol: sym,
                     quantity: reqQty,
-                    price: cmp,
+                    price: Number(cmp.toFixed(2)),
                     comments: rowComment
                 });
             }
-        });
+        }
 
         if (withdrawals.length === 0) {
-            alertToast('Please enter a quantity greater than 0 for at least one stock.', 'warning');
+            alertToast('Please enter a withdrawal quantity greater than 0 for at least one stock.', 'info');
+            const firstQty = document.querySelector('#mscWithdrawalTbody .msc-withdraw-qty-input');
+            if (firstQty) firstQty.focus();
             return;
         }
 
@@ -2602,10 +2937,10 @@
         }
         isSubmitting = true;
 
-        showSmallcaseGlobalLoader({
-            title: 'Processing Withdrawal...',
-            badge: 'Portfolio Liquidation',
-            subtitle: `Liquidating ${withdrawals.length} position(s) and updating smallcase capital & transactions...`
+        setSmallcaseModalLoader('strategyWithdrawalModal', true, {
+            title: 'Executing Withdrawal...',
+            badge: withdrawTo === 'TO_WALLET' ? 'Withdraw to Wallet' : 'Out of Wallet',
+            subtitle: `Liquidating ${withdrawals.length} stock(s) on ${formatDateDisplay(withdrawalDate)} and recording logs...`
         });
 
         try {
@@ -2614,7 +2949,9 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     withdrawals: withdrawals,
-                    comments: batchComments
+                    comments: batchComments,
+                    withdraw_to: withdrawTo,
+                    withdrawal_date: withdrawalDate
                 })
             });
 
@@ -2624,7 +2961,8 @@
             }
 
             closeStrategyWithdrawalModal();
-            alertToast(data.message || `Withdrawn ₹${formatCurrency(data.withdrawn_amount || 0)} successfully!`, 'success');
+            const destTxt = data.withdrawal_type_label ? ` (${data.withdrawal_type_label})` : '';
+            alertToast(data.message || `Withdrawn ₹${formatCurrency(data.withdrawn_amount || 0)}${destTxt} successfully!`, 'success');
 
             currentStrategy = data.strategy || currentStrategy;
             const runsLen = (currentStrategy.runs || []).length;
@@ -2637,7 +2975,7 @@
             alertToast(`Withdrawal Error: ${e.message}`, 'error');
         } finally {
             isSubmitting = false;
-            hideSmallcaseGlobalLoader();
+            setSmallcaseModalLoader('strategyWithdrawalModal', false);
             if (submitBtn) {
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = '<span>💸</span> <span>Confirm Withdrawal</span>';
@@ -2648,6 +2986,9 @@
 
     window.openStrategyWithdrawalModal = openStrategyWithdrawalModal;
     window.closeStrategyWithdrawalModal = closeStrategyWithdrawalModal;
+    window.handleWithdrawalDestinationChange = handleWithdrawalDestinationChange;
+    window.handleWithdrawalDateChange = handleWithdrawalDateChange;
+    window.loadWithdrawalPricesForDate = loadWithdrawalPricesForDate;
     window.setWithdrawalMax = setWithdrawalMax;
     window.withdrawAllHoldingsMax = withdrawAllHoldingsMax;
     window.resetWithdrawalInputs = resetWithdrawalInputs;
@@ -2721,7 +3062,12 @@
             }
 
             if (data.strategy) {
-                currentStrategy = data.strategy;
+                const preservedRuns = currentStrategy ? currentStrategy.runs : null;
+                currentStrategy = {
+                    ...currentStrategy,
+                    ...data.strategy,
+                    runs: (Array.isArray(data.strategy.runs) && data.strategy.runs.length > 0) ? data.strategy.runs : preservedRuns
+                };
             } else {
                 currentStrategy.formula = formula;
                 currentStrategy.trim_existing = trimVal;
@@ -2763,7 +3109,12 @@
                 body: JSON.stringify({ trim_existing: newTrim })
             });
             if (res.success && res.strategy) {
-                currentStrategy = res.strategy;
+                const preservedRuns = currentStrategy ? currentStrategy.runs : null;
+                currentStrategy = {
+                    ...currentStrategy,
+                    ...res.strategy,
+                    runs: (Array.isArray(res.strategy.runs) && res.strategy.runs.length > 0) ? res.strategy.runs : preservedRuns
+                };
                 const trimEl = document.getElementById('sd-trim-existing');
                 if (trimEl) {
                     trimEl.innerText = newTrim ? 'Yes' : 'No';
@@ -2788,7 +3139,7 @@
     // =========================================================================
     // 5a. EXCEL EXPORT FOR ALL / CURRENT RANKED STOCKS
     // =========================================================================
-    function downloadAllRankedStocksExcel() {
+    async function downloadAllRankedStocksExcel() {
         if (!currentStrategy) {
             alertToast('Please select a momentum smallcase strategy first.', 'error');
             return;
@@ -2800,7 +3151,35 @@
         const url = `/api/momentum-smallcases/strategies/${encodeURIComponent(currentStrategy.id)}/runs/${encodeURIComponent(runIdx)}/export-ranked-excel?scope=${encodeURIComponent(scope)}`;
 
         alertToast(scope === 'all' ? 'Downloading Excel workbook for all runs (separate tabs)...' : 'Downloading Excel workbook for current run...', 'info');
-        window.location.href = url;
+        try {
+            const resp = await fetch(url);
+            if (!resp.ok) {
+                let errMsg = `Download failed (HTTP ${resp.status})`;
+                try {
+                    const j = await resp.json();
+                    if (j && j.error) errMsg = j.error;
+                } catch (_) {}
+                alertToast(errMsg, 'error');
+                return;
+            }
+            const blob = await resp.blob();
+            let filename = `Ranked_Stocks_${scope}.xlsx`;
+            const cd = resp.headers.get('Content-Disposition') || '';
+            const fnMatch = cd.match(/filename\*?=(?:UTF-8'')?"?([^";\n]+)"?/i);
+            if (fnMatch && fnMatch[1]) {
+                filename = decodeURIComponent(fnMatch[1].trim());
+            }
+            const blobUrl = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = blobUrl;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
+        } catch (err) {
+            alertToast('Error downloading Excel: ' + (err.message || err), 'error');
+        }
     }
 
     // =========================================================================
@@ -3262,18 +3641,36 @@
             tbody.innerHTML = html;
         }
 
-        // Consolidated Total in tfoot
+        // Consolidated Total in tfoot (scoped to active filter/search when applied)
         if (tfoot) {
-            const totInvested = summary.total_invested || 0;
-            const totValue = summary.total_value || 0;
-            const totPnl = Number(summary.consolidated_pnl || 0);
-            const totPnlPct = Number(summary.consolidated_pnl_percent || 0);
+            const isFiltered = currentConsolidatedFilter !== 'all' || Boolean(consolidatedSearchQuery);
+            let totInvested = Number(summary.total_invested || 0);
+            let totValue = Number(summary.total_value || 0);
+            let totPnl = Number(summary.consolidated_pnl || 0);
+            let totPnlPct = Number(summary.consolidated_pnl_percent || 0);
+            let totCount = summary.total_participated ?? allStocks.length;
+
+            if (isFiltered) {
+                totInvested = filtered.reduce((acc, s) => acc + Number(s.invested || 0), 0);
+                totValue = filtered.reduce((acc, s) => acc + Number(s.current_or_exit_value || 0), 0);
+                totPnl = filtered.reduce((acc, s) => acc + Number(s.pnl || 0), 0);
+                totPnlPct = totInvested > 0 ? Number(((totPnl / totInvested) * 100).toFixed(2)) : 0;
+                totCount = filtered.length;
+            }
+
             const totPnlColor = totPnl >= 0 ? '#10b981' : '#ef4444';
+            const scopeParts = [];
+            if (currentConsolidatedFilter === 'holding') scopeParts.push('Active Holding');
+            else if (currentConsolidatedFilter === 'exited') scopeParts.push('Exited');
+            if (consolidatedSearchQuery) scopeParts.push(`Search: "${escapeHtml(consolidatedSearchQuery)}"`);
+            const scopeLabel = isFiltered
+                ? `📊 Consolidated Portfolio Total (${scopeParts.join(' · ')} — ${totCount} matching)`
+                : `📊 Consolidated Portfolio Total (${totCount} participated stocks)`;
 
             tfoot.innerHTML = `
                 <tr style="background: var(--bg-subtle, rgba(255,255,255,0.04));">
                     <td colspan="6" style="text-align: left; padding: 12px 14px; font-weight: 700; color: var(--text-primary);">
-                        📊 Consolidated Portfolio Total (${summary.total_participated || 0} participated stocks)
+                        ${scopeLabel}
                     </td>
                     <td style="text-align: right; font-family: monospace; padding: 12px 8px; font-weight: 700; color: var(--text-primary);">
                         ₹${formatCurrency(totInvested)}
@@ -3879,12 +4276,17 @@
             let badgeBg = isBuy ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)';
             let badgeColor = isBuy ? '#10b981' : '#ef4444';
             let badgeBorder = isBuy ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)';
+            const wdrMode = t.withdrawal_type || '';
+            const wdrToWallet = wdrMode === 'TO_WALLET';
             if (isWithdraw) {
-                badgeBg = 'rgba(245, 158, 11, 0.15)';
-                badgeColor = '#f59e0b';
-                badgeBorder = 'rgba(245, 158, 11, 0.35)';
+                badgeBg = wdrToWallet ? 'rgba(16, 185, 129, 0.14)' : 'rgba(245, 158, 11, 0.15)';
+                badgeColor = wdrToWallet ? '#10b981' : '#f59e0b';
+                badgeBorder = wdrToWallet ? 'rgba(16, 185, 129, 0.35)' : 'rgba(245, 158, 11, 0.35)';
             }
-            const actionLabel = isWithdraw ? (t.action_label || 'WITHDRAW') : (t.action_label || t.action || 'TRADE');
+            const wdrTypeTag = isWithdraw && (t.withdrawal_type_label || wdrMode)
+                ? ` · ${t.withdrawal_type_label || (wdrToWallet ? 'To Wallet' : 'Out of Wallet')}`
+                : '';
+            const actionLabel = isWithdraw ? `${t.action_label || 'WITHDRAW'}${wdrTypeTag}` : (t.action_label || t.action || 'TRADE');
 
             let pnlHtml = `<span style="color: var(--text-secondary); font-size: 11px;">—</span>`;
             if (isSell && pnl != null) {
@@ -4243,7 +4645,7 @@
         const topGainSubEl = document.getElementById('pgKpiTopGainSub');
         const topPos = kpis.top_3_positive || [];
         if (topPos.length > 0) {
-            if (topGainEl) topGainEl.innerText = `+${formatPercent(topPos[0].change_percent, true)}`;
+            if (topGainEl) topGainEl.innerText = `${formatPercent(topPos[0].change_percent, true)}`;
             if (topGainSubEl) topGainSubEl.innerText = `On ${formatDateDisplay(topPos[0].date)} (+₹${formatCurrency(topPos[0].change_amount)})`;
         } else {
             if (topGainEl) topGainEl.innerText = '—';
@@ -4271,7 +4673,7 @@
                     <tr style="border-bottom: 1px solid var(--border-color);">
                         <td style="text-align: center; font-weight: 700; color: #10b981;">#${item.rank}</td>
                         <td style="font-weight: 600; color: var(--text-primary);">${formatDateDisplay(item.date)}</td>
-                        <td style="text-align: right; font-family: monospace; font-weight: 700; color: #10b981;">+${formatPercent(item.change_percent, true)}</td>
+                        <td style="text-align: right; font-family: monospace; font-weight: 700; color: #10b981;">${formatPercent(item.change_percent, true)}</td>
                         <td style="text-align: right; font-family: monospace; color: #10b981;">+₹${formatCurrency(item.change_amount)}</td>
                         <td style="text-align: right; font-family: monospace; font-weight: 600; color: var(--text-primary);">₹${formatCurrency(item.portfolio_value)}</td>
                     </tr>
@@ -5087,7 +5489,7 @@
 
         let stocksText = idx.raw_stocks || '';
         if (!stocksText && idx.stocks && idx.stocks.length > 0) {
-            stocksText = idx.stocks.map(s => `[${s.symbol}, ${s.date_added}]`).join(', ');
+            stocksText = idx.stocks.map(s => s.date_exited ? `[${s.symbol}, ${s.date_added}, ${s.date_exited}]` : `[${s.symbol}, ${s.date_added}]`).join(', ');
         }
         document.getElementById('mIndexStocksInput').value = stocksText;
 
@@ -5130,10 +5532,13 @@
 
         let chipsHtml = '';
         parsed.forEach(s => {
+            const dateLabel = s.date_exited
+                ? `${escapeHtml(s.date_added)} → ${escapeHtml(s.date_exited)}`
+                : escapeHtml(s.date_added);
             chipsHtml += `
                 <div class="msc-chip">
                     <span class="msc-chip-sym">${escapeHtml(s.symbol)}</span>
-                    <span class="msc-chip-date">${escapeHtml(s.date_added)}</span>
+                    <span class="msc-chip-date">${dateLabel}</span>
                 </div>
             `;
         });
@@ -5189,14 +5594,23 @@
                     updateLiveStocksChipsPreview(res.formatted_stocks);
                 }
                 const count = res.resolved_count || 0;
+                const notEligible = Array.isArray(res.not_eligible) ? res.not_eligible : [];
+                let msg = '';
                 if (count > 0) {
                     const sampleList = Object.entries(res.replacements || {})
                         .slice(0, 4)
                         .map(([k, v]) => `${k} → ${v}`)
                         .join(', ');
-                    alertToast(`Resolved ${count} stock name(s) to NSE tickers: ${sampleList}`, 'success');
+                    msg = `Resolved ${count} stock name(s) to NSE tickers: ${sampleList}`;
                 } else {
-                    alertToast(`All ${res.total_count || 0} stocks verified as valid NSE tickers!`, 'success');
+                    msg = `Verified ${res.eligible_count ?? res.total_count ?? 0} stock(s) as valid NSE tickers.`;
+                }
+                if (notEligible.length > 0) {
+                    const badSample = notEligible.slice(0, 4).map(x => `${x.symbol || x.input}`).join(', ');
+                    msg += ` | Not eligible (${notEligible.length}): ${badSample}`;
+                    alertToast(msg, 'warning');
+                } else {
+                    alertToast(msg, 'success');
                 }
             } else {
                 alertToast(res?.error || 'Could not resolve symbols', 'warning');
@@ -5260,7 +5674,51 @@
             }
 
             closeMomentumFormModal();
-            alertToast(editId ? `Updated index "${name}"` : `Created index "${name}"`, 'success');
+
+            const report = data.sync_report;
+            if (report && typeof report === 'object') {
+                const alreadyCnt = report.already_available_count || 0;
+                const newlyCnt = report.newly_added_count || 0;
+                const notEligCnt = report.not_eligible_count || 0;
+                const newlySyms = Array.isArray(report.newly_added_symbols) ? report.newly_added_symbols : [];
+                const notEligList = Array.isArray(report.not_eligible) ? report.not_eligible : [];
+
+                const toastSummary = `${editId ? 'Updated' : 'Created'} "${name}": ${alreadyCnt} already available, ${newlyCnt} newly added${notEligCnt > 0 ? `, ${notEligCnt} not eligible` : ''}`;
+                alertToast(toastSummary, notEligCnt > 0 ? 'warning' : 'success');
+
+                const subview = document.getElementById('msc-subview-manual-indices');
+                if (subview) {
+                    const prev = document.getElementById('msc-manual-index-sync-report');
+                    if (prev) prev.remove();
+                    const banner = document.createElement('div');
+                    banner.id = 'msc-manual-index-sync-report';
+                    banner.style.cssText = 'margin-bottom: 16px; padding: 14px 16px; border-radius: 8px; background: var(--bg-card); border: 1px solid rgba(14, 165, 233, 0.35); display: flex; flex-direction: column; gap: 6px; font-size: 13px;';
+                    const newlyHtml = newlySyms.length > 0
+                        ? `<div style="color: #10b981;"><strong>Newly Added (${newlyCnt}):</strong> ${newlySyms.map(s => `<code>${escapeHtml(s)}</code>`).join(', ')}${report.bg_sync_started ? ' <span style="opacity:0.85;">(Backfilling prices in background)</span>' : ''}</div>`
+                        : '';
+                    const notEligHtml = notEligList.length > 0
+                        ? `<div style="color: #f59e0b;"><strong>Not Eligible (${notEligCnt}):</strong> ${notEligList.map(x => `<code>${escapeHtml(x.symbol || x.input)}</code> (${escapeHtml(x.reason || 'Unverified')})`).join(', ')}</div>`
+                        : '';
+                    banner.innerHTML = `
+                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+                            <div style="font-weight: 700; color: var(--text-primary);">
+                                Stock Closing Prices Verification — ${escapeHtml(name)}
+                            </div>
+                            <button type="button" onclick="this.closest('#msc-manual-index-sync-report').remove()" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 16px;">&times;</button>
+                        </div>
+                        <div style="color: var(--text-secondary);">
+                            Already Available: <strong style="color: var(--text-primary);">${alreadyCnt}</strong> &bull;
+                            Newly Added: <strong style="color: #10b981;">${newlyCnt}</strong> &bull;
+                            Not Eligible: <strong style="color: ${notEligCnt > 0 ? '#f59e0b' : 'var(--text-primary)'};">${notEligCnt}</strong>
+                        </div>
+                        ${newlyHtml}
+                        ${notEligHtml}
+                    `;
+                    subview.prepend(banner);
+                }
+            } else {
+                alertToast(editId ? `Updated index "${name}"` : `Created index "${name}"`, 'success');
+            }
             await loadMomentumManualIndices();
         } catch (err) {
             console.error('Error saving manual index:', err);
@@ -7345,6 +7803,13 @@
         });
     }
 
+    function getCompareStrategiesSource() {
+        if (Array.isArray(compareStrategiesCache) && compareStrategiesCache.length > 0) {
+            return compareStrategiesCache;
+        }
+        return Array.isArray(strategiesCache) ? strategiesCache : [];
+    }
+
     async function openCompareSmallcasesModal() {
         ensureModalsAttachedToBody();
         compareSmallcasesState.isMinimized = false;
@@ -7355,11 +7820,24 @@
         if (!modal) return;
         modal.style.display = 'flex';
 
-        if (!strategiesCache || strategiesCache.length === 0) {
-            await loadStrategiesList();
+        const hasFullRunsInMemory = getCompareStrategiesSource().some(s => Array.isArray(s.runs));
+        if (!hasFullRunsInMemory) {
+            const listEl = document.getElementById('mscStratCompSelectorList');
+            if (listEl) {
+                listEl.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; padding: 18px; color: var(--text-secondary); font-size: 12.5px;">⏳ Loading smallcase run history for comparison...</div>`;
+            }
+            try {
+                const resp = await safeFetchJson('/api/momentum-smallcases/strategies?scope=compare');
+                if (resp && resp.success && Array.isArray(resp.strategies)) {
+                    compareStrategiesCache = resp.strategies;
+                }
+            } catch (e) {
+                console.error('Error loading compare smallcases data:', e);
+                alertToast('Failed to load comparison data: ' + e.message, 'error');
+            }
         }
 
-        const allStrats = Array.isArray(strategiesCache) ? strategiesCache : [];
+        const allStrats = getCompareStrategiesSource();
         assignColorsForCreatedSmallcases(allStrats);
 
         const executedStrats = allStrats.filter(s => Array.isArray(s.runs) && s.runs.length > 0);
@@ -7457,7 +7935,7 @@
     }
 
     function selectAllCompareSmallcases() {
-        const executed = (strategiesCache || []).filter(s => Array.isArray(s.runs) && s.runs.length > 0);
+        const executed = getCompareStrategiesSource().filter(s => Array.isArray(s.runs) && s.runs.length > 0);
         compareSmallcasesState.selectedIds = executed.map(s => s.id);
         renderCompareSmallcasesSelector();
         refreshCompareSmallcasesView();
@@ -7474,7 +7952,7 @@
         const countBadge = document.getElementById('mscStratCompCountBadge');
         if (!listEl) return;
 
-        const allStrats = Array.isArray(strategiesCache) ? strategiesCache : [];
+        const allStrats = getCompareStrategiesSource();
         const selSet = new Set(compareSmallcasesState.selectedIds || []);
 
         if (countBadge) {
@@ -7538,7 +8016,8 @@
         const pillEl = document.getElementById('mscStratCompPillSelector');
 
         const selectedSet = new Set(compareSmallcasesState.selectedIds || []);
-        const selectedStrats = (strategiesCache || []).filter(s => selectedSet.has(s.id) && Array.isArray(s.runs) && s.runs.length > 0);
+        const compareSource = getCompareStrategiesSource();
+        const selectedStrats = compareSource.filter(s => selectedSet.has(s.id) && Array.isArray(s.runs) && s.runs.length > 0);
 
         if (selectedStrats.length === 0) {
             if (compareSmallcasesState.chartInstance) {
@@ -7552,7 +8031,7 @@
             if (pillEl) pillEl.innerHTML = '';
             if (emptyNotice) emptyNotice.style.display = 'flex';
             if (emptyText) {
-                const anyExecuted = (strategiesCache || []).some(s => Array.isArray(s.runs) && s.runs.length > 0);
+                const anyExecuted = compareSource.some(s => Array.isArray(s.runs) && s.runs.length > 0);
                 emptyText.innerText = anyExecuted
                     ? 'Select one or more executed smallcases above to plot their existing calculated valuations.'
                     : 'No executed smallcases found yet. Run Init / Rebalance on a smallcase first to compare.';

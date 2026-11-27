@@ -116,6 +116,9 @@ class StockClosingPricesProvider:
         self._percent: int = 0
         self._total_stocks: int = 750
         self._synced_stocks_count: int = 0
+        self._sync_scope: str = "index"
+        self._custom_total_stocks: int = 0
+        self._custom_last_synced_display: str = "Never"
         self._last_error: Optional[str] = None
         self._last_synced_display: str = "Never"
         self._latest_trading_date: str = ""
@@ -134,8 +137,11 @@ class StockClosingPricesProvider:
 
             if cached and isinstance(cached, dict):
                 self._last_synced_display = cached.get("last_synced_display", "Never")
+                self._custom_last_synced_display = cached.get("custom_last_synced_display", "Never")
+                self._custom_total_stocks = int(cached.get("custom_total_stocks", 0))
                 self._latest_trading_date = cached.get("latest_trading_date", "")
                 self._synced_stocks_count = int(cached.get("total_stocks", 0))
+                self._sync_scope = str(cached.get("sync_scope") or "index")
                 self._progress = cached.get("progress", "Ready")
         except Exception as e:
             logger.warning(f"Error loading stock closing prices telemetry: {e}")
@@ -144,11 +150,14 @@ class StockClosingPricesProvider:
         """Persists sync telemetry state to DB and local cache."""
         data = {
             "is_syncing": self._is_syncing,
+            "sync_scope": self._sync_scope,
             "progress": self._progress,
             "percent": self._percent,
             "total_stocks": self._synced_stocks_count,
             "universe_size": self._total_stocks,
             "last_synced_display": self._last_synced_display,
+            "custom_total_stocks": self._custom_total_stocks,
+            "custom_last_synced_display": self._custom_last_synced_display,
             "latest_trading_date": self._latest_trading_date,
             "last_error": self._last_error,
             "updated_at": format_ist_iso()
@@ -167,11 +176,9 @@ class StockClosingPricesProvider:
         except Exception as e:
             logger.debug(f"Failed to save local telemetry file: {e}")
 
-    def get_unique_index_stocks(self) -> Dict[str, str]:
+    def get_official_index_stocks(self) -> Dict[str, str]:
         """
-        Extracts all unique stock symbols and company names from collection 'index_constituents'.
-        STRICT REQUIREMENT: Extracts stock details only; does NOT attach or save any index details.
-        Returns: { 'RELIANCE': 'Reliance Industries Ltd', ... }
+        Extracts unique stock symbols from collection 'index_constituents' (official indices).
         """
         stocks_map: Dict[str, str] = {}
         try:
@@ -215,6 +222,42 @@ class StockClosingPricesProvider:
         if stocks_map:
             self._total_stocks = len(stocks_map)
         return stocks_map
+
+    def get_custom_tracked_stocks(self, active_only: bool = True) -> Dict[str, str]:
+        """
+        Loads tracked custom/manual-index & retired stocks from 'custom_tracked_stocks',
+        excluding symbols already covered by the 10 official indices.
+        """
+        official = set(self.get_official_index_stocks().keys())
+        custom_map: Dict[str, str] = {}
+        try:
+            records = db_store.load_custom_tracked_stocks_db(active_only=active_only) or {}
+            for sym, rec in records.items():
+                clean_sym = str(sym or "").strip().upper()
+                if not clean_sym or clean_sym in official:
+                    continue
+                cname = str(rec.get("company_name") or clean_sym).strip()
+                custom_map[clean_sym] = cname
+        except Exception as e:
+            logger.warning(f"Error loading custom_tracked_stocks: {e}")
+        return custom_map
+
+    def get_unique_index_stocks(self, scope: str = "index") -> Dict[str, str]:
+        """
+        Returns stock universe map {symbol: company_name} by scope:
+        - 'index': official 10 NSE indices (default)
+        - 'custom': custom/manual index & exited non-750 stocks
+        - 'all': combined union
+        """
+        sc = str(scope or "index").strip().lower()
+        if sc == "custom":
+            return self.get_custom_tracked_stocks(active_only=True)
+        if sc == "all":
+            merged = dict(self.get_official_index_stocks())
+            for k, v in self.get_custom_tracked_stocks(active_only=True).items():
+                merged.setdefault(k, v)
+            return merged
+        return self.get_official_index_stocks()
 
     def is_market_closed(self) -> Tuple[bool, str]:
         """
@@ -308,17 +351,26 @@ class StockClosingPricesProvider:
         """Telemetry status for Admin Exchange Datasets & Feed Synchronization table."""
         market_closed, market_msg = self.is_market_closed()
         target_market_date = self.get_latest_market_trading_date()
-        
+
+        official_map = self.get_official_index_stocks()
+        custom_map = self.get_custom_tracked_stocks(active_only=True)
+        official_set = set(official_map.keys())
+        custom_set = set(custom_map.keys())
+
         # Inspect actual latest price/date per stock from DB
         summary = self._inspect_db_stock_states()
-        db_count = len(summary)
-        
-        # Calculate pending stocks count
-        pending_count = 0
+        all_db_count = len(summary)
+        official_db_syms = {s: rec for s, rec in summary.items() if s in official_set} if official_set else summary
+        custom_db_syms = {s: rec for s, rec in summary.items() if s in custom_set}
+
+        index_db_count = len(official_db_syms)
+        custom_db_count = len(custom_db_syms)
+        index_universe_size = len(official_set) if official_set else self._total_stocks
+        custom_universe_size = len(custom_set)
+
         latest_date = target_market_date or self._latest_trading_date
         best_synced_display = self._last_synced_display
         if summary:
-            # find latest date present across stocks and latest synced timestamp
             for sym, rec in summary.items():
                 d = rec.get("latest_date", "")
                 if d and d > latest_date:
@@ -329,23 +381,28 @@ class StockClosingPricesProvider:
             self._latest_trading_date = latest_date
             if best_synced_display and best_synced_display != "Never":
                 self._last_synced_display = best_synced_display
-            
-            # Count stocks missing latest completed trading date, empty prices, or needing duplicate repair
-            check_date = target_market_date or latest_date
+
+        check_date = target_market_date or latest_date
+
+        def _count_pending(bucket_recs, expected_size):
+            pend = 0
             if check_date:
-                pending_count = sum(
-                    1 for sym, rec in summary.items()
+                pend = sum(
+                    1 for rec in bucket_recs.values()
                     if (rec.get("latest_date") or "") < check_date
                     or int(rec.get("total_records") or 0) == 0
                     or bool(rec.get("needs_repair"))
                 )
-        if self._total_stocks > db_count:
-            pending_count += (self._total_stocks - db_count)
+            if expected_size > len(bucket_recs):
+                pend += (expected_size - len(bucket_recs))
+            return pend
 
-        # Detect earliest historical date in DB
+        index_pending = _count_pending(official_db_syms, index_universe_size)
+        custom_pending = _count_pending(custom_db_syms, custom_universe_size)
+
         min_start_date = "9999-99-99"
         if summary:
-            for sym, rec in summary.items():
+            for rec in summary.values():
                 s = rec.get("start_date", "")
                 if s and s < min_start_date:
                     min_start_date = s
@@ -354,14 +411,21 @@ class StockClosingPricesProvider:
 
         return {
             "is_syncing": self._is_syncing,
+            "sync_scope": self._sync_scope,
             "progress": self._progress,
             "percent": self._percent,
-            "total_stocks": db_count,
-            "universe_size": self._total_stocks,
-            "pending_count": pending_count,
+            "total_stocks": index_db_count,
+            "all_db_stocks": all_db_count,
+            "universe_size": index_universe_size,
+            "pending_count": index_pending,
+            "custom_total_stocks": custom_db_count,
+            "custom_universe_size": custom_universe_size,
+            "custom_pending_count": custom_pending,
+            "custom_last_synced_display": self._custom_last_synced_display,
             "start_date": min_start_date,
             "latest_trading_date": latest_date or "—",
             "last_synced_display": self._last_synced_display,
+            "last_error": self._last_error,
             "market_closed": market_closed,
             "market_status": "CLOSED" if market_closed else "OPEN",
             "market_message": market_msg,
@@ -521,13 +585,17 @@ class StockClosingPricesProvider:
         force: bool = False,
         full_resync: bool = False,
         start_date: str = "2012-01-01",
-        on_init: bool = False
+        on_init: bool = False,
+        scope: str = "index"
     ) -> Dict[str, Any]:
         """
         Starts asynchronous background synchronization of stock closing prices.
+        scope: 'index' (official 750 stocks), 'custom' (manual/exited tracked stocks), or 'all'.
         Enforces 'take only when market closed' unless explicit administrative force is set.
-        Supports full resync starting from 2012-01-01 or 2013-01-01.
         """
+        sc = str(scope or "index").strip().lower()
+        if sc not in ("index", "custom", "all"):
+            sc = "index"
         market_closed, market_reason = self.is_market_closed()
 
         if not market_closed and not force:
@@ -545,19 +613,23 @@ class StockClosingPricesProvider:
                     "message": "Stock closing prices synchronization is already running in background."
                 }
             self._is_syncing = True
+            self._sync_scope = sc
+            self._last_error = None
             self._percent = 0
-            self._progress = f"Initializing stock price sync ({'Full from ' + start_date if full_resync else 'Pending closes'})..."
+            scope_lbl = "Custom Stocks" if sc == "custom" else ("All Stocks" if sc == "all" else "Index Stocks")
+            self._progress = f"Initializing {scope_lbl} sync ({'Full from ' + start_date if full_resync else 'Pending closes'})..."
 
         thread = threading.Thread(
             target=self._run_sync,
-            args=(force, full_resync, start_date, on_init),
+            args=(force, full_resync, start_date, on_init, sc),
             daemon=True
         )
         thread.start()
 
         return {
             "success": True,
-            "message": f"Stock closing prices synchronization started in background ({'Full from ' + start_date if full_resync else 'Pending closes'}).",
+            "scope": sc,
+            "message": f"{scope_lbl} closing prices synchronization started in background ({'Full from ' + start_date if full_resync else 'Pending closes'}).",
             "market_status": "CLOSED" if market_closed else "OPEN (Forced)"
         }
 
@@ -756,20 +828,33 @@ class StockClosingPricesProvider:
         force: bool = False,
         full_resync: bool = False,
         start_date: str = "2012-01-01",
-        on_init: bool = False
+        on_init: bool = False,
+        scope: str = "index"
     ):
         """Worker thread executing parallel stock fetching and batch database updates."""
+        sc = str(scope or "index").strip().lower()
+        scope_lbl = "custom" if sc == "custom" else ("all" if sc == "all" else "index")
         try:
-            logger.info(f"Starting stock closing prices sync (full_resync={full_resync}, start_date={start_date})...")
-            stocks_map = self.get_unique_index_stocks()
+            logger.info(f"Starting {scope_lbl} stock closing prices sync (full_resync={full_resync}, start_date={start_date})...")
+            stocks_map = self.get_unique_index_stocks(scope=sc)
             if not stocks_map:
+                now_final = format_ist_display()
                 with self._lock:
                     self._is_syncing = False
-                    self._progress = "Sync error: No stocks found in index_constituents."
+                    self._percent = 100
+                    if sc == "custom":
+                        self._custom_last_synced_display = now_final
+                        self._progress = "No active custom stocks found to sync."
+                    else:
+                        self._progress = "Sync error: No stocks found in index_constituents."
+                self._persist_telemetry()
                 return
 
             total_target = len(stocks_map)
-            self._total_stocks = total_target
+            if sc == "index":
+                self._total_stocks = total_target
+            elif sc == "custom":
+                self._custom_total_stocks = total_target
 
             # Inspect each stock's actual latest price/date and duplicate status in DB
             existing_state = self._inspect_db_stock_states()
@@ -791,13 +876,17 @@ class StockClosingPricesProvider:
                     with self._lock:
                         self._is_syncing = False
                         self._percent = 100
-                        self._last_synced_display = now_final
+                        if sc == "custom":
+                            self._custom_last_synced_display = now_final
+                            self._custom_total_stocks = len(stocks_map)
+                        else:
+                            self._last_synced_display = now_final
                         self._latest_trading_date = target_market_date
-                        self._progress = f"All {len(existing_state)} stocks are already up-to-date as of {target_market_date}. 0 pending dates to sync."
+                        self._progress = f"All {len(stocks_map)} {scope_lbl} stocks are already up-to-date as of {target_market_date}."
                     self._persist_telemetry()
-                    logger.info(f"Sync check complete: 0 pending stocks. All stocks up-to-date as of {target_market_date}.")
+                    logger.info(f"Sync check complete ({scope_lbl}): 0 pending stocks. All {len(stocks_map)} up-to-date as of {target_market_date}.")
                     return
-                logger.info(f"Syncing remaining dates / cleanup for {len(stock_items)} stocks (Target date: {check_date})...")
+                logger.info(f"Syncing remaining dates / cleanup for {len(stock_items)} {scope_lbl} stocks (Target date: {check_date})...")
             else:
                 stock_items = list(stocks_map.items())
 
@@ -805,9 +894,9 @@ class StockClosingPricesProvider:
 
             with self._lock:
                 if full_resync:
-                    self._progress = f"Full resynchronization from {start_date} for {total_target} stocks..."
+                    self._progress = f"Full {scope_lbl} resync from {start_date} for {total_target} stocks..."
                 else:
-                    self._progress = f"Checking latest prices & syncing remaining dates for {total_target} stocks (Target: {check_date})..."
+                    self._progress = f"Syncing {total_target} {scope_lbl} stocks (Target: {check_date})..."
                 self._percent = 5
             self._persist_telemetry()
 
@@ -863,7 +952,7 @@ class StockClosingPricesProvider:
                 with self._lock:
                     self._percent = min(pct, 98)
                     self._synced_stocks_count = success_count
-                    self._progress = f"Synced {processed_count}/{total_target} stocks ({success_count} updated)..."
+                    self._progress = f"Synced {processed_count}/{total_target} {scope_lbl} stocks ({success_count} updated)..."
                 self._persist_telemetry()
                 time.sleep(0.05)  # gentle pacing
 
@@ -872,15 +961,27 @@ class StockClosingPricesProvider:
             with self._lock:
                 self._is_syncing = False
                 self._percent = 100
-                self._last_synced_display = now_final
+                if sc == "custom":
+                    self._custom_last_synced_display = now_final
+                    self._custom_total_stocks = len(stocks_map)
+                elif sc == "all":
+                    self._last_synced_display = now_final
+                    self._custom_last_synced_display = now_final
+                else:
+                    self._last_synced_display = now_final
                 if latest_date_seen:
                     self._latest_trading_date = latest_date_seen
-                self._progress = f"Successfully synced {success_count} stocks closing prices (Latest: {self._latest_trading_date})."
+                self._progress = f"Successfully synced {success_count}/{total_target} {scope_lbl} stocks (Latest: {self._latest_trading_date})."
 
             self._persist_telemetry()
-            logger.info(f"Completed stock closing prices sync: {success_count}/{total_target} stocks updated.")
+            logger.info(f"Completed {scope_lbl} stock closing prices sync: {success_count}/{total_target} stocks updated.")
 
-            # Flush comparison cache so newly synced prices are immediately reflected
+            # Flush caches so newly synced prices are immediately reflected
+            try:
+                from modules.momentum_smallcases.momentum_smallcases_calculator import clear_db_prices_cache
+                clear_db_prices_cache()
+            except Exception:
+                pass
             try:
                 from modules.momentum_smallcases.index_comparator import clear_comparison_cache
                 clear_comparison_cache()
@@ -888,12 +989,182 @@ class StockClosingPricesProvider:
                 pass
 
         except Exception as e:
-            logger.error(f"Error during stock closing prices sync: {e}", exc_info=True)
+            logger.error(f"Error during {scope_lbl} stock closing prices sync: {e}", exc_info=True)
             with self._lock:
                 self._is_syncing = False
                 self._last_error = str(e)
                 self._progress = f"Sync failed: {e}"
             self._persist_telemetry()
+
+    def ensure_symbols_in_closing_prices(
+        self,
+        symbol_entries: List[Dict[str, Any]],
+        source: str = "manual_index",
+        manual_index_id: Optional[str] = None,
+        start_date: str = "2012-01-01"
+    ) -> Dict[str, Any]:
+        """
+        Verifies constituent entries against `stock_closing_prices`, fetches & stores
+        missing verified stocks into MongoDB `stock_closing_prices` + `custom_tracked_stocks`,
+        and reports:
+        - already_available_count / already_available_symbols
+        - newly_added_count / newly_added_symbols
+        - not_eligible_count / not_eligible ([{input, symbol, reason}])
+        """
+        if not symbol_entries:
+            return {
+                "already_available_count": 0,
+                "already_available_symbols": [],
+                "newly_added_count": 0,
+                "newly_added_symbols": [],
+                "not_eligible_count": 0,
+                "not_eligible": [],
+            }
+
+        official_set = set(self.get_official_index_stocks().keys())
+        not_eligible: List[Dict[str, str]] = []
+        valid_by_sym: Dict[str, str] = {}
+
+        for item in symbol_entries:
+            if not isinstance(item, dict):
+                continue
+            sym = str(item.get("symbol") or "").strip().upper()
+            orig = str(item.get("original_name") or sym).strip()
+            is_verified = item.get("verified", True)
+            if not sym or not is_verified:
+                not_eligible.append({
+                    "input": orig or sym,
+                    "symbol": sym,
+                    "reason": item.get("verify_reason") or "Symbol verification failed (not an NSE ticker)",
+                })
+                continue
+            if sym not in valid_by_sym:
+                valid_by_sym[sym] = str(item.get("company_name") or sym).strip()
+
+        valid_syms = list(valid_by_sym.keys())
+        already_available: List[str] = []
+        missing_syms: List[str] = []
+
+        if db_store.db is not None and valid_syms:
+            try:
+                existing_docs = db_store.db["stock_closing_prices"].find(
+                    {"_id": {"$in": valid_syms}},
+                    {"_id": 1, "total_records": 1, "company_name": 1}
+                )
+                in_db_set = set()
+                for d in existing_docs:
+                    if int(d.get("total_records") or 0) > 0:
+                        s_id = str(d["_id"]).strip().upper()
+                        in_db_set.add(s_id)
+                        if d.get("company_name"):
+                            valid_by_sym[s_id] = str(d["company_name"]).strip()
+                for sym in valid_syms:
+                    if sym in in_db_set:
+                        already_available.append(sym)
+                    else:
+                        missing_syms.append(sym)
+            except Exception as e:
+                logger.warning(f"Error checking stock_closing_prices existence: {e}")
+                missing_syms = list(valid_syms)
+        else:
+            missing_syms = list(valid_syms)
+
+        # Register existing custom non-official symbols into custom_tracked_stocks too
+        custom_entries_to_upsert = []
+        for sym in already_available:
+            if sym not in official_set:
+                custom_entries_to_upsert.append({
+                    "symbol": sym,
+                    "company_name": valid_by_sym.get(sym, sym),
+                    "source": source,
+                    "manual_index_ids": [manual_index_id] if manual_index_id else [],
+                    "sync_active": True,
+                    "status": "ACTIVE",
+                })
+
+        newly_added: List[str] = []
+        if missing_syms and db_store.db is not None:
+            target_market_date = self.get_latest_market_trading_date()
+            fetched_records = []
+            with ThreadPoolExecutor(max_workers=10) as executor:
+                futures = {
+                    executor.submit(
+                        self._fetch_single_stock_history,
+                        sym,
+                        valid_by_sym.get(sym, sym),
+                        None,
+                        True,
+                        target_market_date,
+                        start_date,
+                        False,
+                    ): sym
+                    for sym in missing_syms
+                }
+                for future in as_completed(futures):
+                    sym = futures[future]
+                    try:
+                        rec = future.result()
+                        if rec and rec.get("prices"):
+                            try:
+                                rec["monthly_prices"] = compute_stock_monthly_prices(rec["prices"])
+                            except Exception:
+                                pass
+                            fetched_records.append(rec)
+                            newly_added.append(sym)
+                            if sym not in official_set:
+                                custom_entries_to_upsert.append({
+                                    "symbol": sym,
+                                    "company_name": valid_by_sym.get(sym, sym),
+                                    "source": source,
+                                    "manual_index_ids": [manual_index_id] if manual_index_id else [],
+                                    "sync_active": True,
+                                    "status": "ACTIVE",
+                                })
+                        else:
+                            not_eligible.append({
+                                "input": sym,
+                                "symbol": sym,
+                                "reason": "No historical closing price series available on NSE/BSE (Yahoo Finance)",
+                            })
+                    except Exception as ex:
+                        not_eligible.append({
+                            "input": sym,
+                            "symbol": sym,
+                            "reason": f"Price fetch failed: {ex}",
+                        })
+
+            if fetched_records:
+                db_store.save_stock_closing_prices_db(fetched_records)
+                try:
+                    from modules.momentum_smallcases.momentum_smallcases_calculator import clear_db_prices_cache
+                    clear_db_prices_cache()
+                except Exception:
+                    pass
+                try:
+                    from modules.momentum_smallcases.index_comparator import clear_comparison_cache
+                    clear_comparison_cache()
+                except Exception:
+                    pass
+        elif missing_syms:
+            # Offline / no-Mongo mode: treat verified symbols cleanly without failing offline tests
+            already_available = list(valid_syms)
+
+        if custom_entries_to_upsert:
+            try:
+                db_store.upsert_custom_tracked_stocks_db(custom_entries_to_upsert)
+            except Exception as e:
+                logger.warning(f"Error registering custom_tracked_stocks: {e}")
+
+        newly_added.sort()
+        already_available.sort()
+        return {
+            "already_available_count": len(already_available),
+            "already_available_symbols": already_available,
+            "newly_added_count": len(newly_added),
+            "newly_added_symbols": newly_added,
+            "not_eligible_count": len(not_eligible),
+            "not_eligible": not_eligible,
+        }
 
     def ensure_initialized(self):
         """

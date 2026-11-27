@@ -14,14 +14,16 @@ from modules.momentum_smallcases.momentum_smallcases_store import (
     parse_stocks_input,
     get_combined_indices_list,
     get_user_strategies,
+    get_user_strategies_summary,
+    get_user_strategies_for_compare,
     get_user_strategy,
     create_user_strategy,
-    update_user_strategy_formula,
     update_user_strategy_settings,
     run_strategy_init,
     run_strategy_rebalance,
     run_strategy_all_rebalances,
     run_strategy_withdrawal,
+    get_strategy_withdrawal_prices,
     start_async_execution_job,
     get_execution_job_status,
     get_strategy_consolidated_stocks,
@@ -107,7 +109,13 @@ def create_index_api():
             stocks_str=stocks_str,
             username=user
         )
-        return jsonify({"success": True, "index": new_index, "message": "Manual Index created successfully"}), 201
+        sync_report = new_index.pop("sync_report", None) if isinstance(new_index, dict) else None
+        return jsonify({
+            "success": True,
+            "index": new_index,
+            "sync_report": sync_report,
+            "message": "Manual Index created successfully"
+        }), 201
     except ValueError as ve:
         return jsonify({"success": False, "error": str(ve)}), 400
     except Exception as e:
@@ -151,7 +159,13 @@ def update_index_api(index_id):
             stocks_str=stocks_str,
             username=user
         )
-        return jsonify({"success": True, "index": updated_index, "message": "Manual Index updated successfully"})
+        sync_report = updated_index.pop("sync_report", None) if isinstance(updated_index, dict) else None
+        return jsonify({
+            "success": True,
+            "index": updated_index,
+            "sync_report": sync_report,
+            "message": "Manual Index updated successfully"
+        })
     except ValueError as ve:
         return jsonify({"success": False, "error": str(ve)}), 400
     except Exception as e:
@@ -225,10 +239,22 @@ def get_indices_catalog_api():
 
 @momentum_smallcases_bp.route("/api/momentum-smallcases/strategies", methods=["GET"])
 def list_strategies_api():
-    """Lists all momentum smallcase strategies for current user."""
+    """
+    Lists momentum smallcase strategies for current user.
+    - Default (scope=summary): lightweight fields only (no runs[]/rankings) for fast dashboard load.
+    - scope=compare: includes run valuation milestones, holdings symbols & transactions without rankings.
+    - scope=full: complete legacy payload.
+    """
     try:
         user = session.get("username") or "admin"
-        strategies = get_user_strategies(user)
+        scope = (request.args.get("scope") or "summary").strip().lower()
+        if scope == "full":
+            strategies = get_user_strategies(user)
+        elif scope == "compare":
+            strategies = get_user_strategies_for_compare(user)
+        else:
+            strategies = get_user_strategies_summary(user)
+
         total_strategies = len(strategies)
         active_strategies = sum(1 for s in strategies if s.get("status") == "ACTIVE")
         total_capital = sum(float(s.get("amount_to_invest", 0.0)) for s in strategies)
@@ -243,6 +269,7 @@ def list_strategies_api():
 
         return jsonify({
             "success": True,
+            "scope": scope,
             "strategies": strategies,
             "summary": summary
         })
@@ -286,7 +313,7 @@ def get_strategy_api(strategy_id):
     """Retrieves full details of a strategy."""
     try:
         user = session.get("username") or "admin"
-        strat = get_user_strategy(strategy_id, username=user)
+        strat = get_user_strategy(strategy_id, username=user, include_all_ranked=False)
         if not strat:
             return jsonify({"success": False, "error": "Strategy not found"}), 404
         return jsonify({"success": True, "strategy": strat})
@@ -438,6 +465,28 @@ def run_rebalance_api(strategy_id):
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+@momentum_smallcases_bp.route("/api/momentum-smallcases/strategies/<strategy_id>/withdrawal-prices", methods=["POST"])
+def get_withdrawal_prices_api(strategy_id):
+    """Fetches historical closing prices on the chosen withdrawal date plus valid rebalance date bounds."""
+    try:
+        user = session.get("username") or "admin"
+        body = request.get_json(silent=True) or {}
+        target_date_str = body.get("date")
+        symbols = body.get("symbols")
+        result = get_strategy_withdrawal_prices(
+            strategy_id=strategy_id,
+            target_date_str=target_date_str,
+            symbols=symbols,
+            username=user,
+        )
+        return jsonify(result)
+    except ValueError as ve:
+        return jsonify({"success": False, "error": str(ve)}), 400
+    except Exception as e:
+        logger.error(f"Error fetching withdrawal prices for '{strategy_id}': {e}", exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @momentum_smallcases_bp.route("/api/momentum-smallcases/strategies/<strategy_id>/withdraw", methods=["POST"])
 def withdraw_strategy_api(strategy_id):
     """Executes partial or full liquidation / withdrawal of holdings from a strategy."""
@@ -446,6 +495,8 @@ def withdraw_strategy_api(strategy_id):
         body = request.get_json(silent=True) or {}
         withdrawals = body.get("withdrawals") or body.get("items") or []
         comments = str(body.get("comments") or "").strip()
+        withdraw_to = body.get("withdraw_to") or body.get("withdrawal_type") or "OUT_OF_WALLET"
+        withdrawal_date = body.get("withdrawal_date") or body.get("date")
 
         if not withdrawals:
             return jsonify({"success": False, "error": "No withdrawal quantities provided."}), 400
@@ -454,7 +505,9 @@ def withdraw_strategy_api(strategy_id):
             strategy_id=strategy_id,
             withdrawals=withdrawals,
             comments=comments,
-            username=user
+            username=user,
+            withdraw_to=withdraw_to,
+            withdrawal_date=withdrawal_date,
         )
         return jsonify(result)
     except ValueError as ve:
@@ -501,7 +554,7 @@ def run_all_strategy_api(strategy_id):
     except ValueError as ve:
         return jsonify({"success": False, "error": str(ve)}), 400
     except RuntimeError as re:
-        strat = get_user_strategy(strategy_id, username=user)
+        strat = get_user_strategy(strategy_id, username=user, include_all_ranked=False)
         return jsonify({
             "success": False,
             "strategy": strat,
@@ -520,7 +573,7 @@ def get_job_status_api(job_id):
     if job:
         # Cross-worker poll: attach fresh strategy from storage if completed in peer worker
         if job.get("status") == "COMPLETED" and job.get("result") is None and job.get("strategy_id"):
-            strat = get_user_strategy(job["strategy_id"], username=job.get("username") or user)
+            strat = get_user_strategy(job["strategy_id"], username=job.get("username") or user, include_all_ranked=False)
             if strat:
                 job["result"] = {
                     "success": True,
@@ -532,7 +585,7 @@ def get_job_status_api(job_id):
     strategy_id = request.args.get("strategy_id")
     min_runs = request.args.get("min_runs", type=int)
     if strategy_id:
-        strat = get_user_strategy(strategy_id, username=user)
+        strat = get_user_strategy(strategy_id, username=user, include_all_ranked=False)
         if strat:
             runs_len = len(strat.get("runs") or [])
             completed_match = (runs_len >= min_runs) if min_runs is not None else (runs_len > 0)

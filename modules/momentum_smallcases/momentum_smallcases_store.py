@@ -5,6 +5,7 @@ Handles storage, parsing, validation, and retrieval of Manual Momentum Indices.
 
 import os
 import re
+import time
 import uuid
 import json
 import logging
@@ -12,6 +13,16 @@ import threading
 from datetime import datetime, date, timedelta
 from flask import session
 from modules.common.ist_datetime import now_ist
+
+_CONSTITUENTS_CACHE = {}
+_CONSTITUENTS_CACHE_LOCK = threading.Lock()
+_CONSTITUENTS_CACHE_TTL_SEC = 300.0
+
+
+def clear_constituents_cache():
+    """Clears the short TTL cache for official index constituents."""
+    with _CONSTITUENTS_CACHE_LOCK:
+        _CONSTITUENTS_CACHE.clear()
 
 
 def _extract_strategy_symbols(target, constituents=None):
@@ -46,7 +57,7 @@ def _prewarm_symbols_for_window(symbols_to_warm, min_date_str=None, max_date_str
     cutoff_str = max_date_str or (cutoff_date.isoformat() if cutoff_date else None)
     missing_from_db = [
         sym for sym in symbols_to_warm
-        if not get_stock_closing_prices_from_db(sym, target_cutoff_str=cutoff_str)
+        if get_stock_closing_prices_from_db(sym, target_cutoff_str=cutoff_str) is None
     ]
     if missing_from_db:
         worker_count = min(8, max(2, len(missing_from_db)))
@@ -91,13 +102,143 @@ def _file(username=None):
     return os.path.join(_DATA_DIR, 'user_data', f'{user}_momentum_smallcases.json')
 
 
+RUNS_COLLECTION = "momentum_smallcase_runs"
+RANKED_SNAPSHOTS_COLLECTION = "momentum_smallcase_ranked_snapshots"
+
+
+def _strip_mongo_internal_keys(doc):
+    """Returns a shallow copy without MongoDB internal normalization wrapper keys."""
+    if not isinstance(doc, dict):
+        return doc
+    clean = {k: v for k, v in doc.items() if k not in ("_id", "username", "strategy_id", "run_index")}
+    return clean
+
+
+def _rehydrate_external_runs_for_strategies(db, strategies, exclude_run_fields=None):
+    """
+    Populates s['runs'] from momentum_smallcase_runs (and momentum_smallcase_ranked_snapshots
+    unless 'all_ranked_stocks' is excluded) for any strategy stored with runs_externalized=True.
+    """
+    if db is None or not strategies:
+        return strategies
+
+    ext_strats = [
+        s for s in strategies
+        if isinstance(s, dict) and s.get("id") and (
+            s.get("runs_externalized") or (not s.get("runs") and int(s.get("runs_count") or 0) > 0)
+        )
+    ]
+    if not ext_strats:
+        return strategies
+
+    ext_ids = [s["id"] for s in ext_strats]
+    exclude_set = set(exclude_run_fields or ())
+
+    run_proj = {"_id": 0, "username": 0}
+    for f in exclude_set:
+        if f != "all_ranked_stocks":
+            run_proj[f] = 0
+
+    runs_by_strat = {sid: [] for sid in ext_ids}
+    try:
+        cursor = db[RUNS_COLLECTION].find({"strategy_id": {"$in": ext_ids}}, run_proj).sort([
+            ("strategy_id", 1),
+            ("run_index", 1),
+        ])
+        for rdoc in cursor:
+            sid = rdoc.pop("strategy_id", None)
+            rdoc.pop("run_index", None)
+            if sid in runs_by_strat:
+                runs_by_strat[sid].append(rdoc)
+    except Exception as e:
+        logger.warning(f"Error loading externalized runs for {ext_ids}: {e}")
+        return strategies
+
+    if "all_ranked_stocks" not in exclude_set:
+        snap_by_id = {}
+        snap_by_idx = {}
+        try:
+            scursor = db[RANKED_SNAPSHOTS_COLLECTION].find(
+                {"strategy_id": {"$in": ext_ids}},
+                {"_id": 0, "strategy_id": 1, "run_id": 1, "run_index": 1, "all_ranked_stocks": 1},
+            )
+            for sdoc in scursor:
+                sid = sdoc.get("strategy_id")
+                rid = sdoc.get("run_id")
+                ridx = sdoc.get("run_index")
+                stocks = sdoc.get("all_ranked_stocks")
+                if stocks is not None:
+                    if sid and rid:
+                        snap_by_id[(sid, rid)] = stocks
+                    if sid is not None and ridx is not None:
+                        snap_by_idx[(sid, ridx)] = stocks
+        except Exception as e:
+            logger.warning(f"Error loading externalized ranked snapshots for {ext_ids}: {e}")
+
+        for sid, rlist in runs_by_strat.items():
+            for idx, r in enumerate(rlist):
+                rid = r.get("run_id")
+                stocks = snap_by_id.get((sid, rid)) if rid else None
+                if stocks is None:
+                    stocks = snap_by_idx.get((sid, idx))
+                if stocks is not None:
+                    r["all_ranked_stocks"] = stocks
+
+    for s in ext_strats:
+        sid = s["id"]
+        ext_runs = runs_by_strat.get(sid)
+        if ext_runs:
+            s["runs"] = ext_runs
+            s["runs_count"] = len(ext_runs)
+    return strategies
+
+
+def _write_externalized_run_and_snapshot(db, safe_user, strategy_id, run_idx, run_entry):
+    """Persists a single run document + its optional all_ranked_stocks snapshot into normalized collections."""
+    run_id = run_entry.get("run_id") or f"run_{run_idx}_{uuid.uuid4().hex[:8]}"
+    doc_id = f"{strategy_id}:{run_id}"
+    all_ranked = run_entry.get("all_ranked_stocks")
+
+    run_doc = {k: v for k, v in run_entry.items() if k != "all_ranked_stocks"}
+    run_doc["_id"] = doc_id
+    run_doc["username"] = safe_user
+    run_doc["strategy_id"] = strategy_id
+    run_doc["run_id"] = run_id
+    run_doc["run_index"] = run_idx
+    db[RUNS_COLLECTION].replace_one({"_id": doc_id}, run_doc, upsert=True)
+
+    if all_ranked is not None:
+        snap_doc = {
+            "_id": doc_id,
+            "username": safe_user,
+            "strategy_id": strategy_id,
+            "run_id": run_id,
+            "run_index": run_idx,
+            "all_ranked_stocks": all_ranked,
+        }
+        db[RANKED_SNAPSHOTS_COLLECTION].replace_one({"_id": doc_id}, snap_doc, upsert=True)
+
+
+def _strip_strategy_runs_header(strategy):
+    """Returns a copy of strategy with runs externalized out of the parent user document."""
+    runs = strategy.get("runs") or []
+    header = dict(strategy)
+    header["runs"] = []
+    header["runs_externalized"] = True
+    header["runs_count"] = len(runs) if runs else int(strategy.get("runs_count") or 0)
+    return header
+
+
 def load_user_momentum_smallcases(username=None):
-    """Loads all momentum indices for the given or current user."""
+    """Loads all momentum indices and full strategies (rehydrating externalized runs) for user."""
     user = _resolve_username(username)
     path = _file(username)
     try:
         from db_store import load_user_doc_db
+        import db_store
         data = load_user_doc_db("momentum_smallcases", user, path, default_factory=dict)
+        if db_store.db is not None and isinstance(data, dict) and data.get("strategies"):
+            _rehydrate_external_runs_for_strategies(db_store.db, data["strategies"])
     except Exception as e:
         data = {}
         if os.path.exists(path):
@@ -116,16 +257,84 @@ def load_user_momentum_smallcases(username=None):
 
 
 def save_user_momentum_smallcases(data, username=None):
-    """Saves momentum indices data for the given or current user."""
+    """
+    Saves full momentum data (used by admin backup/restore, reset, and JSON fallback).
+    When MongoDB is connected, externalizes strategy runs and all_ranked_stocks into
+    dedicated normalized collections so the user doc stays well below MongoDB's 16 MB cap.
+    """
     user = _resolve_username(username)
+    safe_u = _safe_user(user)
     path = _file(username)
+    try:
+        import db_store
+        if db_store.db is not None and isinstance(data, dict):
+            col = db_store.db["momentum_smallcases"]
+            from pymongo import ReplaceOne
+            run_ops = []
+            snap_ops = []
+            header_strategies = []
+            for strat in (data.get("strategies") or []):
+                if not isinstance(strat, dict):
+                    continue
+                sid = strat.get("id")
+                runs = strat.get("runs") or []
+                for idx, r in enumerate(runs):
+                    if not isinstance(r, dict) or not sid:
+                        continue
+                    rid = r.get("run_id") or f"run_{idx}_{uuid.uuid4().hex[:8]}"
+                    doc_id = f"{sid}:{rid}"
+                    all_ranked = r.get("all_ranked_stocks")
+                    run_doc = {k: v for k, v in r.items() if k != "all_ranked_stocks"}
+                    run_doc.update({
+                        "_id": doc_id,
+                        "username": safe_u,
+                        "strategy_id": sid,
+                        "run_id": rid,
+                        "run_index": idx,
+                    })
+                    run_ops.append(ReplaceOne({"_id": doc_id}, run_doc, upsert=True))
+                    if all_ranked is not None:
+                        snap_ops.append(ReplaceOne(
+                            {"_id": doc_id},
+                            {
+                                "_id": doc_id,
+                                "username": safe_u,
+                                "strategy_id": sid,
+                                "run_id": rid,
+                                "run_index": idx,
+                                "all_ranked_stocks": all_ranked,
+                            },
+                            upsert=True,
+                        ))
+                header_strategies.append(_strip_strategy_runs_header(strat))
+
+            db_store.db[RUNS_COLLECTION].delete_many({"username": safe_u})
+            db_store.db[RANKED_SNAPSHOTS_COLLECTION].delete_many({"username": safe_u})
+            if run_ops:
+                db_store.db[RUNS_COLLECTION].bulk_write(run_ops, ordered=False)
+            if snap_ops:
+                db_store.db[RANKED_SNAPSHOTS_COLLECTION].bulk_write(snap_ops, ordered=False)
+
+            header_doc = dict(data)
+            header_doc["strategies"] = header_strategies
+            col.replace_one({"_id": safe_u}, {"_id": safe_u, "username": user, "data": header_doc}, upsert=True)
+
+            # Update local JSON backup cleanly
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            tmp = path + '.tmp'
+            with open(tmp, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False)
+            os.replace(tmp, path)
+            return
+    except Exception as e:
+        logger.warning(f"Normalized MongoDB save_user_momentum_smallcases fallback for {user}: {e}")
+
     try:
         from db_store import save_user_doc_db
         save_user_doc_db("momentum_smallcases", user, data, path)
-    except Exception as e:
+    except Exception:
         os.makedirs(os.path.dirname(path), exist_ok=True)
         tmp = path + '.tmp'
-        import json
         with open(tmp, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=4, ensure_ascii=False)
         os.replace(tmp, path)
@@ -180,50 +389,59 @@ def calculate_days_active(date_str):
     return 0
 
 
-def parse_stocks_input(stocks_str):
+def parse_stocks_input(stocks_str, verify_symbols=True):
     """
     Parses stocks input in format:
-    [stockname1, dateAdded(DD/MM/YYYY)], [stockname2, dateAdded(DD/MM/YYYY)]
-    Automatically resolves stock / company names to official NSE ticker symbols.
+    [stockname1, DD/MM/YYYY] or [stockname1, DD/MM/YYYY, DD/MM/YYYY(exit)]
+    Automatically resolves stock / company names to official NSE ticker symbols when verify_symbols=True.
     Returns a list of parsed stock dictionaries ordered by date_added ascending.
     """
     if not stocks_str or not isinstance(stocks_str, str):
         return []
 
-    try:
-        from modules.momentum_smallcases.symbol_resolver import resolve_and_parse_stocks
-        parsed = resolve_and_parse_stocks(stocks_str)
-        if parsed:
-            return parsed
-    except Exception as e:
-        logger.warning(f"Error resolving symbols in parse_stocks_input: {e}")
+    if verify_symbols:
+        try:
+            from modules.momentum_smallcases.symbol_resolver import resolve_and_parse_stocks
+            parsed = resolve_and_parse_stocks(stocks_str)
+            if parsed:
+                return parsed
+        except Exception as e:
+            logger.warning(f"Error resolving symbols in parse_stocks_input: {e}")
 
     results = []
     seen = set()
 
-    # Match [symbol, date] patterns
-    pattern = re.compile(r'\[\s*([^,\]\r\n]+?)\s*,\s*([0-9]{1,2}[\/\-\.][0-9]{1,2}[\/\-\.][0-9]{2,4})\s*\]')
+    # Match [symbol, date_added] or [symbol, date_added, date_exited]
+    pattern = re.compile(
+        r'\[\s*([^,\]\r\n]+?)\s*,\s*([0-9]{1,2}[\/\-\.][0-9]{1,2}[\/\-\.][0-9]{2,4})'
+        r'(?:\s*,\s*([0-9]{1,2}[\/\-\.][0-9]{1,2}[\/\-\.][0-9]{2,4}))?\s*\]'
+    )
     matches = pattern.findall(stocks_str)
 
-    for symbol_raw, date_raw in matches:
+    for symbol_raw, date_raw, exit_raw in matches:
         sym = symbol_raw.strip().upper()
         if not sym:
             continue
-        try:
-            from modules.momentum_smallcases.symbol_resolver import resolve_symbol
-            sym = resolve_symbol(sym)
-        except Exception:
-            pass
+        if verify_symbols:
+            try:
+                from modules.momentum_smallcases.symbol_resolver import resolve_symbol
+                sym = resolve_symbol(sym)
+            except Exception:
+                pass
         norm_date = normalize_date(date_raw)
-        key = (sym, norm_date)
+        norm_exit = normalize_date(exit_raw) if exit_raw else None
+        key = (sym, norm_date, norm_exit)
         if key not in seen:
             seen.add(key)
             days = calculate_days_active(norm_date)
-            results.append({
+            item = {
                 "symbol": sym,
                 "date_added": norm_date,
                 "days_active": days
-            })
+            }
+            if norm_exit:
+                item["date_exited"] = norm_exit
+            results.append(item)
 
     # If regex missed any due to slight formatting issues, try a broader fallback
     if not results and '[' in stocks_str:
@@ -273,8 +491,24 @@ def format_stocks_output(stocks_list):
 
 def get_user_indices(username=None):
     """Retrieves all manual momentum indices for the user with constituents sorted by date_added ascending."""
-    data = load_user_momentum_smallcases(username)
+    user = _resolve_username(username)
+    data = None
+    try:
+        import db_store
+        if db_store.db is not None and user:
+            col = db_store.db["momentum_smallcases"]
+            doc = col.find_one({"_id": _safe_user(user)}, {"_id": 0, "data.indices": 1})
+            if doc and isinstance(doc.get("data"), dict):
+                data = doc["data"]
+    except Exception as e:
+        logger.warning(f"MongoDB projected get_user_indices fallback for {user}: {e}")
+
+    if data is None:
+        data = load_user_momentum_smallcases(user)
+
     indices = data.get("indices", [])
+    if not isinstance(indices, list):
+        indices = []
     for idx in indices:
         stks = idx.get("stocks", [])
         for s in stks:
@@ -284,34 +518,284 @@ def get_user_indices(username=None):
     return indices
 
 
-def create_user_index(name, description, stocks_str, username=None):
-    """Creates a new manual index with constituents sorted by date_added ascending."""
+def _parse_store_date(d_val, fallback=None):
+    """Fast ISO/common date parser delegating to calculator.parse_date_fast."""
+    from modules.momentum_smallcases.momentum_smallcases_calculator import parse_date_fast
+    return parse_date_fast(d_val, fallback=fallback)
+
+
+def _coerce_trim_existing(trim_existing, default=False):
+    """Uniformly coerces trim_existing bool/string flags."""
+    if trim_existing is None:
+        return default
+    if isinstance(trim_existing, str):
+        return trim_existing.strip().lower() not in ("no", "false", "0")
+    return bool(trim_existing)
+
+
+def _persist_strategy_update(username, strategy_id, target, new_run=None, new_capital_logs=None, set_fields=None):
+    """
+    Atomically updates a single strategy in MongoDB:
+    - When new_run is provided, writes the run + all_ranked_stocks snapshot into
+      normalized collections (momentum_smallcase_runs & momentum_smallcase_ranked_snapshots)
+      and updates only lightweight summary fields + runs_count on the parent user doc.
+    - When updating full strategy (e.g. Init or settings), externalizes runs cleanly.
+    Falls back cleanly to load/save_user_momentum_smallcases when MongoDB is unavailable
+    or the user doc doesn't yet exist in MongoDB.
+    """
+    user = _resolve_username(username)
+    safe_u = _safe_user(user)
+    try:
+        import db_store
+        if db_store.db is not None and user:
+            db = db_store.db
+            col = db["momentum_smallcases"]
+            filt = {"_id": safe_u, "data.strategies.id": strategy_id}
+            runs_list = target.get("runs") or []
+
+            if new_run is not None and set_fields is not None:
+                run_idx = max(0, len(runs_list) - 1)
+                total_runs_count = len(runs_list)
+                # Guard: if transitioning a non-externalized strategy to externalized storage,
+                # preserve & migrate all pre-existing embedded runs (from full DB doc so
+                # ranked_stocks/all_ranked_stocks aren't lost) before clearing data.strategies.$.runs.
+                if not target.get("runs_externalized"):
+                    prior_runs = []
+                    try:
+                        existing_doc = col.find_one(filt, {"_id": 0, "data.strategies.$": 1})
+                        existing_strats = ((existing_doc or {}).get("data") or {}).get("strategies") or []
+                        if existing_strats and isinstance(existing_strats[0].get("runs"), list):
+                            prior_runs = existing_strats[0]["runs"]
+                    except Exception:
+                        prior_runs = []
+                    if not prior_runs and len(runs_list) > 1:
+                        prior_runs = runs_list[:-1]
+                    for p_idx, p_run in enumerate(prior_runs):
+                        _write_externalized_run_and_snapshot(db, safe_u, strategy_id, p_idx, p_run)
+                    run_idx = max(run_idx, len(prior_runs))
+                    total_runs_count = max(total_runs_count, run_idx + 1)
+
+                _write_externalized_run_and_snapshot(db, safe_u, strategy_id, run_idx, new_run)
+
+                ext_set = dict(set_fields)
+                ext_set["runs_externalized"] = True
+                ext_set["runs_count"] = total_runs_count
+                ext_set["runs"] = []
+                update_ops = {
+                    "$set": {f"data.strategies.$.{k}": v for k, v in ext_set.items()},
+                }
+                if new_capital_logs:
+                    update_ops["$push"] = {
+                        "data.strategies.$.capital_logs": (
+                            {"$each": new_capital_logs} if len(new_capital_logs) > 1 else new_capital_logs[0]
+                        )
+                    }
+                res = col.update_one(filt, update_ops)
+            else:
+                for idx, r in enumerate(runs_list):
+                    _write_externalized_run_and_snapshot(db, safe_u, strategy_id, idx, r)
+                header_target = _strip_strategy_runs_header(target) if runs_list else target
+                res = col.update_one(filt, {"$set": {"data.strategies.$": header_target}})
+
+            if res.matched_count > 0:
+                target["runs_externalized"] = True
+                target["runs_count"] = len(runs_list)
+                return True
+    except Exception as e:
+        logger.warning(f"MongoDB targeted strategy update fallback for {user}/{strategy_id}: {e}")
+
+    data = load_user_momentum_smallcases(user)
+    strategies = data.setdefault("strategies", [])
+    replaced = False
+    for idx, s in enumerate(strategies):
+        if s.get("id") == strategy_id:
+            strategies[idx] = target
+            replaced = True
+            break
+    if not replaced:
+        strategies.insert(0, target)
+    save_user_momentum_smallcases(data, user)
+    return True
+
+
+def _fetch_projected_strategy(strategy_id, username=None, exclude_run_fields=None, rehydrate_runs=True):
+    """
+    Loads a single strategy via MongoDB $filter projection with optional
+    server-side field exclusions (e.g. 'all_ranked_stocks', 'ranked_stocks'),
+    transparently rehydrating externalized runs from momentum_smallcase_runs
+    unless rehydrate_runs=False (for header-only updates).
+    """
+    user = _resolve_username(username)
+    try:
+        import db_store
+        if db_store.db is not None and user:
+            db = db_store.db
+            col = db["momentum_smallcases"]
+            pipeline = [
+                {"$match": {"_id": _safe_user(user)}},
+                {"$project": {
+                    "_id": 0,
+                    "strategies": {
+                        "$filter": {
+                            "input": {"$ifNull": ["$data.strategies", []]},
+                            "as": "s",
+                            "cond": {"$eq": ["$$s.id", strategy_id]}
+                        }
+                    }
+                }},
+            ]
+            if not rehydrate_runs:
+                pipeline.append({"$project": {"strategies.runs": 0}})
+            elif exclude_run_fields:
+                pipeline.append({
+                    "$project": {f"strategies.runs.{field}": 0 for field in exclude_run_fields}
+                })
+            agg = list(col.aggregate(pipeline))
+            if agg:
+                matched = agg[0].get("strategies") or []
+                if matched:
+                    strat = matched[0]
+                    if rehydrate_runs:
+                        _rehydrate_external_runs_for_strategies(db, [strat], exclude_run_fields=exclude_run_fields)
+                    return _normalize_strategy_summary_fields(strat)
+                return None
+    except Exception as e:
+        logger.warning(f"MongoDB projected strategy fallback for {user}/{strategy_id}: {e}")
+
+    strategies = get_user_strategies(user)
+    return next((x for x in strategies if x.get("id") == strategy_id), None)
+
+
+def _get_strategy_without_ranked_arrays(strategy_id, username=None):
+    """Loads a single strategy stripped of ranked_stocks and all_ranked_stocks on MongoDB's server."""
+    return _fetch_projected_strategy(
+        strategy_id,
+        username=username,
+        exclude_run_fields=("ranked_stocks", "all_ranked_stocks"),
+    )
+
+
+def _verify_and_backfill_manual_index_stocks(parsed_stocks, index_id, verify_and_sync=True):
+    """
+    Verifies parsed manual index symbols against NSE master + stock_closing_prices,
+    adds missing valid stocks into `stock_closing_prices` & `custom_tracked_stocks`,
+    and strips non-eligible entries while producing a full summary report.
+    """
+    if not parsed_stocks:
+        return [], {
+            "already_available_count": 0,
+            "already_available_symbols": [],
+            "newly_added_count": 0,
+            "newly_added_symbols": [],
+            "not_eligible_count": 0,
+            "not_eligible": [],
+        }
+
+    # Preserve non-DB offline behavior when verify_and_sync is False or DB is disconnected
+    import db_store
+    if not verify_and_sync or db_store.db is None:
+        verified_list = []
+        not_elig = []
+        for s in parsed_stocks:
+            if s.get("verified", True):
+                clean = {k: v for k, v in s.items() if k != "verify_reason"}
+                verified_list.append(clean)
+            else:
+                not_elig.append({
+                    "input": s.get("original_name") or s.get("symbol"),
+                    "symbol": s.get("symbol"),
+                    "reason": s.get("verify_reason") or "Symbol verification failed",
+                })
+        kept = verified_list if verified_list else parsed_stocks
+        return kept, {
+            "already_available_count": len({s["symbol"] for s in kept}),
+            "already_available_symbols": sorted({s["symbol"] for s in kept}),
+            "newly_added_count": 0,
+            "newly_added_symbols": [],
+            "not_eligible_count": len(not_elig),
+            "not_eligible": not_elig,
+        }
+
+    from modules.stock_closing_prices.stock_closing_prices_provider import stock_closing_prices_provider
+    report = stock_closing_prices_provider.ensure_symbols_in_closing_prices(
+        parsed_stocks,
+        source="manual_index",
+        manual_index_id=index_id,
+    )
+    not_elig_syms = {str(x.get("symbol") or "").upper() for x in (report.get("not_eligible") or [])}
+    not_elig_inputs = {str(x.get("input") or "").upper() for x in (report.get("not_eligible") or [])}
+
+    eligible_stocks = []
+    for s in parsed_stocks:
+        sym = str(s.get("symbol") or "").strip().upper()
+        orig = str(s.get("original_name") or sym).strip().upper()
+        if not s.get("verified", True) or sym in not_elig_syms or orig in not_elig_inputs:
+            continue
+        clean = {k: v for k, v in s.items() if k not in ("verified", "verify_reason")}
+        eligible_stocks.append(clean)
+
+    return eligible_stocks, report
+
+
+def create_user_index(name, description, stocks_str, username=None, verify_and_sync_prices=True):
+    """Creates a new manual index with verified constituents and ensures DB closing prices."""
     name = (name or "").strip()
     if not name:
         raise ValueError("Index name is required")
 
     description = (description or "").strip()
-    parsed_stocks = parse_stocks_input(stocks_str)
-    raw_formatted = format_stocks_output(parsed_stocks) if parsed_stocks else (stocks_str or "").strip()
+    parsed_stocks = parse_stocks_input(stocks_str, verify_symbols=verify_and_sync_prices)
+    new_id = f"midx_{uuid.uuid4().hex[:12]}"
+    eligible_stocks, sync_report = _verify_and_backfill_manual_index_stocks(
+        parsed_stocks, new_id, verify_and_sync=verify_and_sync_prices
+    )
+    if parsed_stocks and not eligible_stocks:
+        first_reasons = "; ".join(
+            f"{e.get('input')}: {e.get('reason')}" for e in (sync_report.get("not_eligible") or [])[:5]
+        )
+        raise ValueError(f"No eligible verified stocks found ({first_reasons})")
 
-    data = load_user_momentum_smallcases(username)
-    indices = data.setdefault("indices", [])
+    raw_formatted = format_stocks_output(eligible_stocks) if eligible_stocks else (stocks_str or "").strip()
 
     now_iso = datetime.now().isoformat()
     new_index = {
-        "id": f"midx_{uuid.uuid4().hex[:12]}",
+        "id": new_id,
         "name": name,
         "description": description,
-        "stocks": parsed_stocks,
+        "stocks": eligible_stocks,
         "raw_stocks": raw_formatted,
-        "stock_count": len(parsed_stocks),
+        "stock_count": len(eligible_stocks),
         "created_at": now_iso,
         "updated_at": now_iso
     }
 
-    indices.insert(0, new_index)
-    save_user_momentum_smallcases(data, username)
-    return new_index
+    user = _resolve_username(username)
+    persisted = False
+    try:
+        import db_store
+        if db_store.db is not None and user:
+            col = db_store.db["momentum_smallcases"]
+            res = col.update_one(
+                {"_id": _safe_user(user), "data.indices": {"$type": "array"}},
+                {
+                    "$set": {"username": user},
+                    "$push": {"data.indices": {"$each": [new_index], "$position": 0}},
+                },
+            )
+            persisted = res.matched_count > 0
+    except Exception as e:
+        logger.warning(f"MongoDB targeted create_user_index fallback for {user}: {e}")
+
+    if not persisted:
+        data = load_user_momentum_smallcases(user)
+        indices = data.setdefault("indices", [])
+        indices.insert(0, new_index)
+        save_user_momentum_smallcases(data, user)
+
+    clear_constituents_cache()
+    ret_index = dict(new_index)
+    ret_index["sync_report"] = sync_report
+    return ret_index
 
 
 def get_user_index(index_id, username=None, enrich_quotes=False):
@@ -332,22 +816,44 @@ def get_user_index(index_id, username=None, enrich_quotes=False):
         s["days_active"] = calculate_days_active(s.get("date_added", ""))
 
     if enrich_quotes:
+        clean_syms = []
+        for s in stocks:
+            sym = s.get("symbol")
+            if sym:
+                clean_syms.append(sym.strip().upper().replace('.NS', '').replace('.BO', ''))
+        clean_syms = list(dict.fromkeys(clean_syms))
+
+        db_quotes = {}
+        if clean_syms:
+            try:
+                import db_store
+                if db_store.db is not None:
+                    cursor = db_store.db["stock_closing_prices"].find(
+                        {"_id": {"$in": clean_syms}},
+                        {"latest_close": 1, "change": 1, "change_pct": 1, "company_name": 1}
+                    )
+                    for doc in cursor:
+                        db_quotes[str(doc.get("_id") or "").strip().upper()] = doc
+            except Exception as e:
+                logger.debug(f"Batch quote enrichment fallback: {e}")
+
         for s in stocks:
             sym = s.get("symbol")
             if not sym:
                 continue
             clean_s = sym.strip().upper().replace('.NS', '').replace('.BO', '')
             try:
-                # 1. Primary: Check stock_closing_prices in DB
-                from db_store import load_stock_closing_prices_db
-                doc = load_stock_closing_prices_db(symbol=clean_s)
+                doc = db_quotes.get(clean_s)
+                if not doc:
+                    import db_store
+                    if db_store.db is None:
+                        doc = db_store.load_stock_closing_prices_db(symbol=clean_s, summary_only=True)
                 if doc and doc.get("latest_close") is not None:
                     s["current_price"] = doc.get("latest_close")
                     s["change"] = doc.get("change") or 0.0
                     s["change_percent"] = doc.get("change_pct") or 0.0
                     s["company_name"] = doc.get("company_name") or sym
                 elif _fetcher:
-                    # 2. Fallback: Live Provider
                     quote = _fetcher.fetch_stock(sym, use_cache=True)
                     if quote and not quote.get("error"):
                         s["current_price"] = quote.get("price") or quote.get("current_price") or 0.0
@@ -372,40 +878,102 @@ def get_user_index(index_id, username=None, enrich_quotes=False):
     return result
 
 
-def update_user_index(index_id, name, description, stocks_str, username=None):
-    """Updates an existing manual index."""
+def update_user_index(index_id, name, description, stocks_str, username=None, verify_and_sync_prices=True):
+    """Updates an existing manual index, verifies & backfills missing closing prices in DB."""
     name = (name or "").strip()
     if not name:
         raise ValueError("Index name is required")
 
-    data = load_user_momentum_smallcases(username)
+    description = (description or "").strip()
+    parsed_stocks = parse_stocks_input(stocks_str, verify_symbols=verify_and_sync_prices)
+    eligible_stocks, sync_report = _verify_and_backfill_manual_index_stocks(
+        parsed_stocks, index_id, verify_and_sync=verify_and_sync_prices
+    )
+    if parsed_stocks and not eligible_stocks:
+        first_reasons = "; ".join(
+            f"{e.get('input')}: {e.get('reason')}" for e in (sync_report.get("not_eligible") or [])[:5]
+        )
+        raise ValueError(f"No eligible verified stocks found ({first_reasons})")
+
+    raw_formatted = format_stocks_output(eligible_stocks) if eligible_stocks else (stocks_str or "").strip()
+    now_iso = datetime.now().isoformat()
+
+    user = _resolve_username(username)
+    try:
+        import db_store
+        if db_store.db is not None and user:
+            col = db_store.db["momentum_smallcases"]
+            res = col.update_one(
+                {"_id": _safe_user(user), "data.indices.id": index_id},
+                {
+                    "$set": {
+                        "data.indices.$.name": name,
+                        "data.indices.$.description": description,
+                        "data.indices.$.stocks": eligible_stocks,
+                        "data.indices.$.raw_stocks": raw_formatted,
+                        "data.indices.$.stock_count": len(eligible_stocks),
+                        "data.indices.$.updated_at": now_iso,
+                    }
+                },
+            )
+            if res.matched_count > 0:
+                clear_constituents_cache()
+                updated = get_user_index(index_id, username=user, enrich_quotes=False)
+                if isinstance(updated, dict):
+                    updated["sync_report"] = sync_report
+                return updated
+    except Exception as e:
+        logger.warning(f"MongoDB targeted update_user_index fallback for {user}/{index_id}: {e}")
+
+    data = load_user_momentum_smallcases(user)
     indices = data.get("indices", [])
     target = next((x for x in indices if x.get("id") == index_id), None)
     if not target:
         raise ValueError(f"Manual Index with ID '{index_id}' not found")
 
-    description = (description or "").strip()
-    parsed_stocks = parse_stocks_input(stocks_str)
-    raw_formatted = format_stocks_output(parsed_stocks) if parsed_stocks else (stocks_str or "").strip()
-
     target["name"] = name
     target["description"] = description
-    target["stocks"] = parsed_stocks
+    target["stocks"] = eligible_stocks
     target["raw_stocks"] = raw_formatted
-    target["stock_count"] = len(parsed_stocks)
-    target["updated_at"] = datetime.now().isoformat()
+    target["stock_count"] = len(eligible_stocks)
+    target["updated_at"] = now_iso
 
-    save_user_momentum_smallcases(data, username)
-    return target
+    save_user_momentum_smallcases(data, user)
+    clear_constituents_cache()
+    ret = dict(target)
+    ret["sync_report"] = sync_report
+    return ret
 
 
 def delete_user_index(index_id, username=None):
     """Deletes a manual index by ID."""
     user = _resolve_username(username)
+    target_id = str(index_id or "").strip()
+
+    try:
+        import db_store
+        if db_store.db is not None and user:
+            col = db_store.db["momentum_smallcases"]
+            res = col.update_one(
+                {"_id": _safe_user(user)},
+                {"$pull": {"data.indices": {"id": target_id}}}
+            )
+            if res.modified_count > 0:
+                return True
+            if user != 'admin':
+                res_admin = col.update_one(
+                    {"_id": _safe_user('admin')},
+                    {"$pull": {"data.indices": {"id": target_id}}}
+                )
+                if res_admin.modified_count > 0:
+                    return True
+            return False
+    except Exception as e:
+        logger.warning(f"MongoDB targeted delete_user_index fallback for {user}/{target_id}: {e}")
+
     data = load_user_momentum_smallcases(user)
     indices = data.get("indices", [])
     initial_len = len(indices)
-    target_id = str(index_id or "").strip()
     indices = [x for x in indices if str(x.get("id", "")).strip() != target_id]
     if len(indices) != initial_len:
         data["indices"] = indices
@@ -471,9 +1039,31 @@ def get_combined_indices_list(username=None):
 
 def get_strategy_index_constituents(index_id, index_type="manual", username=None):
     """
-    Retrieves constituent stocks for a given index.
-    Returns list of dicts: [{"symbol": "...", "date_added": "DD/MM/YYYY" | None}]
+    Retrieves constituent stocks (including membership intervals when tracked) for a given index.
+    Returns list of dicts: [{"symbol": "...", "date_added": ..., "date_exited": ..., "intervals": [...]}]
     """
+    def _build_official_entries(data):
+        hist = data.get("constituent_history") or []
+        if hist:
+            entries = []
+            for h in hist:
+                sym = str(h.get("symbol") or "").strip().upper()
+                if not sym:
+                    continue
+                ivs = h.get("intervals") or []
+                first_iv = ivs[0] if ivs else {}
+                last_iv = ivs[-1] if ivs else {}
+                entries.append({
+                    "symbol": sym,
+                    "date_added": first_iv.get("date_added"),
+                    "date_exited": last_iv.get("date_exited") if not h.get("currently_active", True) else None,
+                    "intervals": ivs,
+                })
+            if entries:
+                return entries
+        stocks = data.get("stocks") or []
+        return [{"symbol": s.get("symbol", ""), "date_added": None} for s in stocks if s.get("symbol")]
+
     if index_type == "manual" or str(index_id).startswith("midx_"):
         idx = get_user_index(index_id, username=username)
         if not idx:
@@ -481,19 +1071,30 @@ def get_strategy_index_constituents(index_id, index_type="manual", username=None
             try:
                 from modules.index_stocks.index_stocks_provider import index_stocks_provider
                 data = index_stocks_provider.get_index_stocks(index_id)
-                if data and "stocks" in data:
-                    return [{"symbol": s.get("symbol", ""), "date_added": None} for s in data["stocks"] if s.get("symbol")]
+                if data and ("constituent_history" in data or "stocks" in data):
+                    return _build_official_entries(data)
             except Exception:
                 pass
             return []
         return idx.get("stocks", [])
     else:
-        # Nifty official index
+        # Nifty official index (short 300s TTL cache avoids ~8.9s repeat DB fetch per rebalance)
+        cache_key = str(index_id or "").strip()
+        now_mono = time.monotonic()
+        with _CONSTITUENTS_CACHE_LOCK:
+            cached_entry = _CONSTITUENTS_CACHE.get(cache_key)
+            if cached_entry and (now_mono - cached_entry[0]) < _CONSTITUENTS_CACHE_TTL_SEC:
+                return [dict(item) for item in cached_entry[1]]
+
         try:
             from modules.index_stocks.index_stocks_provider import index_stocks_provider
             data = index_stocks_provider.get_index_stocks(index_id)
-            if data and "stocks" in data:
-                return [{"symbol": s.get("symbol", ""), "date_added": None} for s in data["stocks"] if s.get("symbol")]
+            if data and ("constituent_history" in data or "stocks" in data):
+                result = _build_official_entries(data)
+                if result:
+                    with _CONSTITUENTS_CACHE_LOCK:
+                        _CONSTITUENTS_CACHE[cache_key] = (time.monotonic(), tuple(dict(item) for item in result))
+                return result
         except Exception as e:
             logger.warning(f"Error fetching Nifty index constituents for '{index_id}': {e}")
         # Fallback to user index if not found in Nifty benchmarks
@@ -503,7 +1104,7 @@ def get_strategy_index_constituents(index_id, index_type="manual", username=None
         return []
 
 
-def calculate_strategy_next_rebalance(base_date, rebalance_day):
+def calculate_strategy_next_rebalance(base_date, rebalance_day, holidays_set=None):
     """
     Computes next rebalance date based on rebalance_day, and adjusts
     for weekends and official trading holidays.
@@ -511,14 +1112,10 @@ def calculate_strategy_next_rebalance(base_date, rebalance_day):
     from modules.momentum_smallcases.momentum_smallcases_calculator import (
         get_next_trading_day,
         get_official_trading_holidays,
+        parse_date_fast,
     )
 
-    if isinstance(base_date, str):
-        base = datetime.strptime(base_date[:10], "%Y-%m-%d").date()
-    elif isinstance(base_date, datetime):
-        base = base_date.date()
-    else:
-        base = base_date
+    base = parse_date_fast(base_date, fallback=base_date)
 
     r_day = int(rebalance_day)
     # Clamp to valid calendar day
@@ -536,31 +1133,353 @@ def calculate_strategy_next_rebalance(base_date, rebalance_day):
             target_month = base.month + 1
 
     scheduled_date = date(target_year, target_month, r_day)
-    holidays_set = get_official_trading_holidays()
+    if holidays_set is None:
+        holidays_set = get_official_trading_holidays()
     adjusted_date, was_moved = get_next_trading_day(scheduled_date, holidays_set)
 
     return scheduled_date, adjusted_date, was_moved
 
 
+def _normalize_strategy_summary_fields(s):
+    """Computes normalized capital and PnL summary fields on a strategy dict in-place."""
+    cap = float(s.get("total_capital") if s.get("total_capital") is not None else s.get("amount_to_invest", 0.0))
+    port_val = float(s.get("current_portfolio_value") if s.get("current_portfolio_value") is not None else cap)
+    pnl = float(s.get("total_pnl") if s.get("total_pnl") is not None else (port_val - cap))
+    pnl_pct = float(s.get("total_pnl_percent") if s.get("total_pnl_percent") is not None else (((pnl / cap) * 100.0) if cap > 0 else 0.0))
+    s["total_capital"] = round(cap, 2)
+    s["total_pnl"] = round(pnl, 2)
+    s["total_pnl_percent"] = round(pnl_pct, 2)
+    return s
+
+
 def get_user_strategies(username=None):
-    """Retrieves all momentum smallcase strategies for the user."""
+    """Retrieves all momentum smallcase strategies (full payload) for the user."""
     data = load_user_momentum_smallcases(username)
     strategies = data.get("strategies", [])
     for s in strategies:
-        cap = float(s.get("total_capital") if s.get("total_capital") is not None else s.get("amount_to_invest", 0.0))
-        port_val = float(s.get("current_portfolio_value") if s.get("current_portfolio_value") is not None else cap)
-        pnl = float(s.get("total_pnl") if s.get("total_pnl") is not None else (port_val - cap))
-        pnl_pct = float(s.get("total_pnl_percent") if s.get("total_pnl_percent") is not None else (((pnl / cap) * 100.0) if cap > 0 else 0.0))
-        s["total_capital"] = round(cap, 2)
-        s["total_pnl"] = round(pnl, 2)
-        s["total_pnl_percent"] = round(pnl_pct, 2)
+        _normalize_strategy_summary_fields(s)
     return strategies
 
 
-def get_user_strategy(strategy_id, username=None):
-    """Retrieves a single strategy by ID."""
-    strategies = get_user_strategies(username)
-    return next((x for x in strategies if x.get("id") == strategy_id), None)
+def get_user_strategies_summary(username=None):
+    """
+    Retrieves lightweight strategy summaries for the Smallcases list view.
+    Uses MongoDB server-side $project/$map so heavy runs[], holdings[], and rankings
+    are never transferred over the network.
+    """
+    user = _resolve_username(username)
+    strategies = None
+    try:
+        import db_store
+        if db_store.db is not None and user:
+            col = db_store.db["momentum_smallcases"]
+            agg = list(col.aggregate([
+                {"$match": {"_id": _safe_user(user)}},
+                {"$project": {
+                    "_id": 0,
+                    "strategies": {
+                        "$map": {
+                            "input": {"$ifNull": ["$data.strategies", []]},
+                            "as": "s",
+                            "in": {
+                                "id": "$$s.id",
+                                "name": "$$s.name",
+                                "start_date": "$$s.start_date",
+                                "effective_start_date": "$$s.effective_start_date",
+                                "index_id": "$$s.index_id",
+                                "index_name": "$$s.index_name",
+                                "index_type": "$$s.index_type",
+                                "no_of_stocks": "$$s.no_of_stocks",
+                                "exit_regime_ranking": "$$s.exit_regime_ranking",
+                                "rebalance_day": "$$s.rebalance_day",
+                                "trim_existing": "$$s.trim_existing",
+                                "trading_days_per_month": "$$s.trading_days_per_month",
+                                "initial_amount": "$$s.initial_amount",
+                                "amount_to_invest": "$$s.amount_to_invest",
+                                "total_capital": "$$s.total_capital",
+                                "current_portfolio_value": "$$s.current_portfolio_value",
+                                "current_wallet": "$$s.current_wallet",
+                                "last_stepup_amount": "$$s.last_stepup_amount",
+                                "total_fees_paid": "$$s.total_fees_paid",
+                                "total_pnl": "$$s.total_pnl",
+                                "total_pnl_percent": "$$s.total_pnl_percent",
+                                "status": "$$s.status",
+                                "next_rebalance_date": "$$s.next_rebalance_date",
+                                "created_at": "$$s.created_at",
+                                "updated_at": "$$s.updated_at",
+                                "runs_count": {"$ifNull": ["$$s.runs_count", {"$size": {"$ifNull": ["$$s.runs", []]}}]}
+                            }
+                        }
+                    }
+                }}
+            ]))
+            if agg:
+                strategies = agg[0].get("strategies") or []
+            else:
+                # Document may not exist yet in MongoDB; check local JSON fallback if present
+                path = _file(user)
+                if not os.path.exists(path):
+                    strategies = []
+    except Exception as e:
+        logger.warning(f"MongoDB projected get_user_strategies_summary fallback for {user}: {e}")
+
+    if strategies is None:
+        full_strategies = get_user_strategies(user)
+        strategies = []
+        for s in full_strategies:
+            summary_item = {
+                k: s.get(k)
+                for k in (
+                    "id", "name", "start_date", "effective_start_date",
+                    "index_id", "index_name", "index_type",
+                    "no_of_stocks", "exit_regime_ranking", "rebalance_day",
+                    "trim_existing", "trading_days_per_month",
+                    "initial_amount", "amount_to_invest", "total_capital",
+                    "current_portfolio_value", "current_wallet", "last_stepup_amount",
+                    "total_fees_paid", "total_pnl", "total_pnl_percent",
+                    "status", "next_rebalance_date", "created_at", "updated_at"
+                )
+            }
+            summary_item["runs_count"] = int(s.get("runs_count") or len(s.get("runs") or []))
+            strategies.append(summary_item)
+
+    for s in strategies:
+        _normalize_strategy_summary_fields(s)
+    return strategies
+
+
+def get_user_strategies_for_compare(username=None):
+    """
+    Retrieves strategies with run valuation milestones, holdings symbols, and transactions
+    needed for the Compare Created Smallcases popup, stripping heavy ranked_stocks and
+    all_ranked_stocks arrays on MongoDB's server.
+    """
+    user = _resolve_username(username)
+    strategies = None
+    try:
+        import db_store
+        if db_store.db is not None and user:
+            col = db_store.db["momentum_smallcases"]
+            agg = list(col.aggregate([
+                {"$match": {"_id": _safe_user(user)}},
+                {"$project": {
+                    "_id": 0,
+                    "strategies": {
+                        "$map": {
+                            "input": {"$ifNull": ["$data.strategies", []]},
+                            "as": "s",
+                            "in": {
+                                "id": "$$s.id",
+                                "name": "$$s.name",
+                                "start_date": "$$s.start_date",
+                                "index_id": "$$s.index_id",
+                                "index_name": "$$s.index_name",
+                                "index_type": "$$s.index_type",
+                                "no_of_stocks": "$$s.no_of_stocks",
+                                "exit_regime_ranking": "$$s.exit_regime_ranking",
+                                "rebalance_day": "$$s.rebalance_day",
+                                "trim_existing": "$$s.trim_existing",
+                                "trading_days_per_month": "$$s.trading_days_per_month",
+                                "amount_to_invest": "$$s.amount_to_invest",
+                                "total_capital": "$$s.total_capital",
+                                "current_portfolio_value": "$$s.current_portfolio_value",
+                                "total_pnl": "$$s.total_pnl",
+                                "total_pnl_percent": "$$s.total_pnl_percent",
+                                "total_fees_paid": "$$s.total_fees_paid",
+                                "status": "$$s.status",
+                                "runs_externalized": "$$s.runs_externalized",
+                                "runs_count": "$$s.runs_count",
+                                "runs": {
+                                    "$map": {
+                                        "input": {"$ifNull": ["$$s.runs", []]},
+                                        "as": "r",
+                                        "in": {
+                                            "executed_date": "$$r.executed_date",
+                                            "scheduled_date": "$$r.scheduled_date",
+                                            "title": "$$r.title",
+                                            "run_type": "$$r.run_type",
+                                            "eligible_stocks_count": "$$r.eligible_stocks_count",
+                                            "transactions": {
+                                                "$map": {
+                                                    "input": {"$ifNull": ["$$r.transactions", {"$ifNull": ["$$r.portfolio_snapshot.transactions", []]}]},
+                                                    "as": "tx",
+                                                    "in": {
+                                                        "symbol": "$$tx.symbol",
+                                                        "stock": "$$tx.stock",
+                                                        "action": "$$tx.action"
+                                                    }
+                                                }
+                                            },
+                                            "portfolio_snapshot": {
+                                                "total_capital": "$$r.portfolio_snapshot.total_capital",
+                                                "total_portfolio_value": "$$r.portfolio_snapshot.total_portfolio_value",
+                                                "total_pnl": "$$r.portfolio_snapshot.total_pnl",
+                                                "total_pnl_percent": "$$r.portfolio_snapshot.total_pnl_percent",
+                                                "holdings": {
+                                                    "$map": {
+                                                        "input": {"$ifNull": ["$$r.portfolio_snapshot.holdings", []]},
+                                                        "as": "h",
+                                                        "in": {
+                                                            "symbol": "$$h.symbol",
+                                                            "quantity": "$$h.quantity",
+                                                            "current_value": "$$h.current_value"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }}
+            ]))
+            if agg:
+                strategies = agg[0].get("strategies") or []
+                ext_ids = [
+                    s["id"] for s in strategies
+                    if isinstance(s, dict) and s.get("id") and (
+                        s.get("runs_externalized") or (not s.get("runs") and int(s.get("runs_count") or 0) > 0)
+                    )
+                ]
+                if ext_ids:
+                    comp_runs_by_strat = {sid: [] for sid in ext_ids}
+                    comp_cursor = db_store.db[RUNS_COLLECTION].find(
+                        {"strategy_id": {"$in": ext_ids}},
+                        {
+                            "_id": 0,
+                            "strategy_id": 1,
+                            "executed_date": 1,
+                            "scheduled_date": 1,
+                            "title": 1,
+                            "run_type": 1,
+                            "eligible_stocks_count": 1,
+                            "transactions.symbol": 1,
+                            "transactions.stock": 1,
+                            "transactions.action": 1,
+                            "portfolio_snapshot.total_capital": 1,
+                            "portfolio_snapshot.total_portfolio_value": 1,
+                            "portfolio_snapshot.total_pnl": 1,
+                            "portfolio_snapshot.total_pnl_percent": 1,
+                            "portfolio_snapshot.holdings.symbol": 1,
+                            "portfolio_snapshot.holdings.quantity": 1,
+                            "portfolio_snapshot.holdings.current_value": 1,
+                        },
+                    ).sort([("strategy_id", 1), ("run_index", 1)])
+                    for rdoc in comp_cursor:
+                        sid = rdoc.pop("strategy_id", None)
+                        if sid in comp_runs_by_strat:
+                            comp_runs_by_strat[sid].append(rdoc)
+                    for s in strategies:
+                        sid = s.get("id")
+                        if sid in comp_runs_by_strat and comp_runs_by_strat[sid]:
+                            s["runs"] = comp_runs_by_strat[sid]
+            else:
+                path = _file(user)
+                if not os.path.exists(path):
+                    strategies = []
+    except Exception as e:
+        logger.warning(f"MongoDB projected get_user_strategies_for_compare fallback for {user}: {e}")
+
+    if strategies is None:
+        strategies = get_user_strategies(user)
+
+    for s in strategies:
+        _normalize_strategy_summary_fields(s)
+    return strategies
+
+
+def get_user_strategy(strategy_id, username=None, include_all_ranked=True):
+    """Retrieves a single strategy by ID using MongoDB $filter projection when available."""
+    exclude_fields = None if include_all_ranked else ("all_ranked_stocks",)
+    return _fetch_projected_strategy(strategy_id, username=username, exclude_run_fields=exclude_fields)
+
+
+def _resolve_index_metadata(index_id, username=None):
+    """
+    Resolves (index_name, index_type) for an index_id without downloading full
+    constituent stock arrays or user strategies.
+    """
+    raw_id = str(index_id or "").strip()
+    if not raw_id.startswith("midx_"):
+        try:
+            from modules.index_stocks.index_stocks_provider import INDEX_REGISTRY
+            reg = INDEX_REGISTRY.get(raw_id)
+            if not reg:
+                upper_id = raw_id.upper()
+                reg = next((v for k, v in INDEX_REGISTRY.items() if k.upper() == upper_id or str(v.get("name", "")).upper() == upper_id), None)
+            if reg:
+                return reg.get("name", raw_id), "nifty"
+        except Exception:
+            pass
+
+    # Manual index (or non-registry fallback): project only index id & name
+    user = _resolve_username(username)
+    try:
+        import db_store
+        if db_store.db is not None and user:
+            col = db_store.db["momentum_smallcases"]
+            agg = list(col.aggregate([
+                {"$match": {"_id": _safe_user(user)}},
+                {"$project": {
+                    "_id": 0,
+                    "indices": {
+                        "$map": {
+                            "input": {
+                                "$filter": {
+                                    "input": {"$ifNull": ["$data.indices", []]},
+                                    "as": "idx",
+                                    "cond": {"$eq": ["$$idx.id", raw_id]}
+                                }
+                            },
+                            "as": "m",
+                            "in": {"id": "$$m.id", "name": "$$m.name"}
+                        }
+                    }
+                }}
+            ]))
+            if agg and agg[0].get("indices"):
+                m = agg[0]["indices"][0]
+                return m.get("name") or raw_id, "manual"
+    except Exception as e:
+        logger.warning(f"Projected _resolve_index_metadata fallback for {raw_id}: {e}")
+
+    # Local JSON / full fallback
+    all_indices = get_combined_indices_list(user)
+    found_idx = next((x for x in all_indices if x["id"] == raw_id), None)
+    if found_idx:
+        return found_idx["name"], found_idx["type"]
+    return raw_id, ("manual" if raw_id.startswith("midx_") else "nifty")
+
+
+def _prepend_user_strategy(new_strategy, username=None):
+    """
+    Persists a newly created strategy at index 0 of data.strategies.
+    Uses atomic MongoDB $push ($position: 0) when connected so existing strategies
+    and run histories are never downloaded or re-uploaded.
+    """
+    user = _resolve_username(username)
+    try:
+        import db_store
+        if db_store.db is not None and user:
+            col = db_store.db["momentum_smallcases"]
+            res = col.update_one(
+                {"_id": _safe_user(user), "data.strategies": {"$type": "array"}},
+                {
+                    "$set": {"username": user},
+                    "$push": {"data.strategies": {"$each": [new_strategy], "$position": 0}},
+                },
+            )
+            if res.matched_count > 0:
+                return
+    except Exception as e:
+        logger.warning(f"MongoDB atomic _prepend_user_strategy fallback for {user}: {e}")
+
+    data = load_user_momentum_smallcases(user)
+    strategies = data.setdefault("strategies", [])
+    strategies.insert(0, new_strategy)
+    save_user_momentum_smallcases(data, user)
 
 
 def create_user_strategy(
@@ -591,9 +1510,8 @@ def create_user_strategy(
     if not start_date_str:
         raise ValueError("Start date is required")
 
-    try:
-        start_d = datetime.strptime(start_date_str, "%Y-%m-%d").date()
-    except Exception:
+    start_d = _parse_store_date(start_date_str)
+    if not start_d or len(start_date_str) != 10:
         raise ValueError("Start date must be in YYYY-MM-DD format")
 
     today_d = now_ist().date()
@@ -634,12 +1552,7 @@ def create_user_strategy(
     formula = (formula or "").strip() or DEFAULT_FORMULA
 
     # Parse trim_existing (default False)
-    if trim_existing is True or str(trim_existing).strip().lower() in ("yes", "true", "1"):
-        trim_val = True
-    elif trim_existing is False or str(trim_existing).strip().lower() in ("no", "false", "0"):
-        trim_val = False
-    else:
-        trim_val = False
+    trim_val = _coerce_trim_existing(trim_existing, default=False)
 
     # Parse trading_days_per_month (21 or 30, default 21)
     try:
@@ -647,18 +1560,15 @@ def create_user_strategy(
     except Exception:
         td_val = 21
 
-    # Identify index name & type
-    all_indices = get_combined_indices_list(username)
-    found_idx = next((x for x in all_indices if x["id"] == index_id), None)
-    index_name = found_idx["name"] if found_idx else str(index_id)
-    index_type = found_idx["type"] if found_idx else ("manual" if str(index_id).startswith("midx_") else "nifty")
+    # Identify index name & type without loading full index stock arrays or user strategies
+    index_name, index_type = _resolve_index_metadata(index_id, username=username)
 
-    # Check holiday adjustment for start date
+    # Check holiday adjustment for start date (reuse fetched holidays_set for next rebalance)
     holidays_set = get_official_trading_holidays()
     adj_start, was_moved_start = get_next_trading_day(start_d, holidays_set)
 
     # Compute first scheduled rebalance date
-    _, first_next_rebal, _ = calculate_strategy_next_rebalance(adj_start, rebal_day)
+    _, first_next_rebal, _ = calculate_strategy_next_rebalance(adj_start, rebal_day, holidays_set=holidays_set)
 
     now_iso = datetime.now().isoformat()
     strategy_id = f"msc_strategy_{uuid.uuid4().hex[:12]}"
@@ -703,10 +1613,7 @@ def create_user_strategy(
         "updated_at": now_iso
     }
 
-    data = load_user_momentum_smallcases(username)
-    strategies = data.setdefault("strategies", [])
-    strategies.insert(0, new_strategy)
-    save_user_momentum_smallcases(data, username)
+    _prepend_user_strategy(new_strategy, username=username)
 
     return new_strategy
 
@@ -717,47 +1624,71 @@ def update_user_strategy_formula(strategy_id, formula, username=None):
     if not formula:
         raise ValueError("Formula cannot be empty")
 
-    data = load_user_momentum_smallcases(username)
-    strategies = data.get("strategies", [])
-    target = next((x for x in strategies if x.get("id") == strategy_id), None)
+    target = get_user_strategy(strategy_id, username=username)
     if not target:
         raise ValueError("Strategy not found")
 
+    now_iso = datetime.now().isoformat()
     target["formula"] = formula
-    target["updated_at"] = datetime.now().isoformat()
-    save_user_momentum_smallcases(data, username)
+    target["updated_at"] = now_iso
+    _persist_strategy_update(username, strategy_id, target)
     return target
 
 
 def update_user_strategy_settings(strategy_id, formula=None, trim_existing=None, trading_days_per_month=None, username=None):
     """Updates settings (formula, trim_existing, trading_days_per_month) for a strategy."""
-    data = load_user_momentum_smallcases(username)
-    strategies = data.get("strategies", [])
-    target = next((x for x in strategies if x.get("id") == strategy_id), None)
+    user = _resolve_username(username)
+    target = _fetch_projected_strategy(
+        strategy_id,
+        username=user,
+        exclude_run_fields=("ranked_stocks", "all_ranked_stocks"),
+        rehydrate_runs=False,
+    )
     if not target:
         raise ValueError("Strategy not found")
 
+    set_fields = {}
     if formula is not None:
         f = (formula or "").strip()
         if f:
             target["formula"] = f
+            set_fields["formula"] = f
 
     if trim_existing is not None:
-        trim_val = False if trim_existing is False or str(trim_existing).strip().lower() in ("no", "false", "0") else True
-        target["trim_existing"] = trim_val
+        coerced_trim = _coerce_trim_existing(trim_existing)
+        target["trim_existing"] = coerced_trim
+        set_fields["trim_existing"] = coerced_trim
 
     if trading_days_per_month is not None:
         try:
-            target["trading_days_per_month"] = 21 if int(trading_days_per_month) == 21 else 30
+            td = 21 if int(trading_days_per_month) == 21 else 30
+            target["trading_days_per_month"] = td
+            set_fields["trading_days_per_month"] = td
         except Exception:
             pass
 
-    target["updated_at"] = datetime.now().isoformat()
-    save_user_momentum_smallcases(data, username)
+    now_iso = datetime.now().isoformat()
+    target["updated_at"] = now_iso
+    set_fields["updated_at"] = now_iso
+
+    updated_direct = False
+    try:
+        import db_store
+        if db_store.db is not None and user:
+            res = db_store.db["momentum_smallcases"].update_one(
+                {"_id": _safe_user(user), "data.strategies.id": strategy_id},
+                {"$set": {f"data.strategies.$.{k}": v for k, v in set_fields.items()}},
+            )
+            updated_direct = res.matched_count > 0
+    except Exception as e:
+        logger.warning(f"MongoDB lightweight settings update fallback for {user}/{strategy_id}: {e}")
+
+    if not updated_direct:
+        _persist_strategy_update(user, strategy_id, target)
     return target
 
 
-def run_strategy_init(strategy_id, username=None):
+def run_strategy_init(strategy_id, username=None, _target_ref=None, _preloaded_constituents=None, _preloaded_holidays=None, _save_cache=True):
     """
     Executes the initial portfolio run for the strategy:
     1. Filters universe constituents by stock date_added <= start_date.
@@ -772,9 +1703,7 @@ def run_strategy_init(strategy_id, username=None):
         get_official_trading_holidays,
     )
 
-    data = load_user_momentum_smallcases(username)
-    strategies = data.get("strategies", [])
-    target = next((x for x in strategies if x.get("id") == strategy_id), None)
+    target = _target_ref if _target_ref is not None else get_user_strategy(strategy_id, username=username)
     if not target:
         raise ValueError("Strategy not found")
 
@@ -782,8 +1711,8 @@ def run_strategy_init(strategy_id, username=None):
         raise ValueError("Init has already been executed for this strategy")
 
     # Determine execution date
-    start_d = datetime.strptime(target["start_date"], "%Y-%m-%d").date()
-    holidays_set = get_official_trading_holidays()
+    start_d = _parse_store_date(target["start_date"])
+    holidays_set = _preloaded_holidays if _preloaded_holidays is not None else get_official_trading_holidays()
     exec_date, was_moved = get_next_trading_day(start_d, holidays_set)
 
     today_d = now_ist().date()
@@ -795,7 +1724,7 @@ def run_strategy_init(strategy_id, username=None):
         )
 
     # 1. Fetch universe constituents
-    constituents = get_strategy_index_constituents(
+    constituents = _preloaded_constituents if _preloaded_constituents is not None else get_strategy_index_constituents(
         target["index_id"],
         target.get("index_type", "manual"),
         username=username
@@ -803,18 +1732,21 @@ def run_strategy_init(strategy_id, username=None):
     if not constituents:
         raise ValueError(f"Index '{target.get('index_name')}' contains 0 constituent stocks. Please add stocks in Manual Indices.")
 
-    # 1.1 Pre-warm daily quotes in parallel for the needed lookback window (~450d)
-    symbols_to_warm = _extract_strategy_symbols(target, constituents)
-    if symbols_to_warm:
-        win_min = (exec_date - timedelta(days=450)).isoformat()
-        win_max = exec_date.isoformat()
-        _prewarm_symbols_for_window(
-            symbols_to_warm,
-            min_date_str=win_min,
-            max_date_str=win_max,
-            cutoff_date=exec_date,
-            save_cache=True
-        )
+    # 1.1 Pre-warm daily quotes in parallel for constituents active on exec_date (~450d lookback)
+    if _save_cache:
+        from modules.momentum_smallcases.momentum_smallcases_calculator import filter_constituents_for_window
+        active_constituents = filter_constituents_for_window(constituents, exec_date)
+        symbols_to_warm = _extract_strategy_symbols(target, active_constituents)
+        if symbols_to_warm:
+            win_min = (exec_date - timedelta(days=450)).isoformat()
+            win_max = exec_date.isoformat()
+            _prewarm_symbols_for_window(
+                symbols_to_warm,
+                min_date_str=win_min,
+                max_date_str=win_max,
+                cutoff_date=exec_date,
+                save_cache=True
+            )
 
     # 2. Evaluate and rank stocks
     ranked_stocks, eligible_count, meta = rank_and_evaluate_universe(
@@ -824,6 +1756,7 @@ def run_strategy_init(strategy_id, username=None):
         no_of_stocks=target["no_of_stocks"],
         exit_regime_ranking=target["exit_regime_ranking"],
         return_meta=True,
+        save_cache=_save_cache,
         trading_days_per_month=target.get("trading_days_per_month", 30)
     )
 
@@ -856,8 +1789,8 @@ def run_strategy_init(strategy_id, username=None):
 
     now_iso = datetime.now().isoformat()
 
-    # Calculate next scheduled rebalance date
-    _, next_rebal, _ = calculate_strategy_next_rebalance(exec_date, target["rebalance_day"])
+    # Calculate next scheduled rebalance date reusing already-fetched holidays
+    _, next_rebal, _ = calculate_strategy_next_rebalance(exec_date, target["rebalance_day"], holidays_set=holidays_set)
 
     init_run_entry = {
         "run_id": f"run_init_{uuid.uuid4().hex[:10]}",
@@ -890,7 +1823,6 @@ def run_strategy_init(strategy_id, username=None):
     target["next_rebalance_date"] = next_rebal.isoformat()
     target["updated_at"] = now_iso
 
-    # Capital audit log for execution
     added_list = portfolio.get("changes", {}).get("added", [])
     target.setdefault("capital_logs", []).append({
         "id": f"clog_{uuid.uuid4().hex[:8]}",
@@ -904,11 +1836,20 @@ def run_strategy_init(strategy_id, username=None):
         "notes": f"Init completed: Bought {len(added_list)} stocks. Fees: ₹{portfolio['fees_paid']:.2f}. Remaining cash in wallet: ₹{portfolio['wallet_balance']:.2f}"
     })
 
-    save_user_momentum_smallcases(data, username)
+    _persist_strategy_update(username, strategy_id, target)
     return target
 
 
-def run_strategy_rebalance(strategy_id, stepup_amount=0.0, username=None, save_cache=True, trim_existing=None):
+def run_strategy_rebalance(
+    strategy_id,
+    stepup_amount=0.0,
+    username=None,
+    save_cache=True,
+    trim_existing=None,
+    _target_ref=None,
+    _preloaded_constituents=None,
+    _preloaded_holidays=None,
+):
     """
     Executes a rebalance run for the strategy:
     1. Advances to next rebalance trading date.
@@ -926,9 +1867,7 @@ def run_strategy_rebalance(strategy_id, stepup_amount=0.0, username=None, save_c
         get_official_trading_holidays,
     )
 
-    data = load_user_momentum_smallcases(username)
-    strategies = data.get("strategies", [])
-    target = next((x for x in strategies if x.get("id") == strategy_id), None)
+    target = _target_ref if _target_ref is not None else _get_strategy_without_ranked_arrays(strategy_id, username=username)
     if not target:
         raise ValueError("Strategy not found")
 
@@ -936,14 +1875,13 @@ def run_strategy_rebalance(strategy_id, stepup_amount=0.0, username=None, save_c
         raise ValueError("Please run Init before rebalancing")
 
     runs = target.setdefault("runs", [])
-    last_run = runs[-1]
     prev_holdings = target.get("holdings", [])
     prev_wallet = target.get("current_wallet", 0.0)
 
     # Next scheduled date
     sched_rebal_str = target.get("next_rebalance_date") or date.today().isoformat()
-    rebal_d = datetime.strptime(sched_rebal_str[:10], "%Y-%m-%d").date()
-    holidays_set = get_official_trading_holidays()
+    rebal_d = _parse_store_date(sched_rebal_str, fallback=date.today())
+    holidays_set = _preloaded_holidays if _preloaded_holidays is not None else get_official_trading_holidays()
     exec_date, was_moved = get_next_trading_day(rebal_d, holidays_set)
 
     today_d = now_ist().date()
@@ -955,22 +1893,25 @@ def run_strategy_rebalance(strategy_id, stepup_amount=0.0, username=None, save_c
         )
 
     now_iso = datetime.now().isoformat()
+    new_capital_logs = []
 
     # Step-up capital handling
     stepup = float(stepup_amount or 0.0)
     if stepup > 0:
         target["amount_to_invest"] = round(target.get("amount_to_invest", 0.0) + stepup, 2)
-        target.setdefault("capital_logs", []).append({
+        stepup_log = {
             "id": f"clog_{uuid.uuid4().hex[:8]}",
             "timestamp": now_iso,
             "type": "STEPUP_DEPOSIT",
             "amount": stepup,
             "wallet_after": round(prev_wallet + stepup, 2),
             "notes": f"Step-up capital added prior to rebalance: ₹{stepup:,.2f}"
-        })
+        }
+        target.setdefault("capital_logs", []).append(stepup_log)
+        new_capital_logs.append(stepup_log)
 
-    # Fetch index constituents up to rebalance date
-    constituents = get_strategy_index_constituents(
+    # Fetch index constituents up to rebalance date (reuse across Rebalance All iterations)
+    constituents = _preloaded_constituents if _preloaded_constituents is not None else get_strategy_index_constituents(
         target["index_id"],
         target.get("index_type", "manual"),
         username=username
@@ -979,8 +1920,11 @@ def run_strategy_rebalance(strategy_id, stepup_amount=0.0, username=None, save_c
         raise ValueError("No constituents found for index")
 
     # Standalone rebalance windowed pre-warming (~450d lookback up to exec_date)
+    # Pre-filter by membership date first so historically exited stocks don't slow down DB prewarm
     if save_cache:
-        symbols_to_warm = _extract_strategy_symbols(target, constituents)
+        from modules.momentum_smallcases.momentum_smallcases_calculator import filter_constituents_for_window
+        active_constituents = filter_constituents_for_window(constituents, exec_date)
+        symbols_to_warm = _extract_strategy_symbols(target, active_constituents)
         if symbols_to_warm:
             win_min = (exec_date - timedelta(days=450)).isoformat()
             win_max = exec_date.isoformat()
@@ -1012,16 +1956,8 @@ def run_strategy_rebalance(strategy_id, stepup_amount=0.0, username=None, save_c
         raise ValueError(f"Could not calculate momentum metrics for rebalance date ({failed_str}).")
 
     # Execute rebalance equal weight allocation
-    if trim_existing is None:
-        t_trim = target.get("trim_existing")
-        if t_trim is None:
-            trim_existing_eff = False
-        elif isinstance(t_trim, str):
-            trim_existing_eff = t_trim.strip().lower() not in ("no", "false", "0")
-        else:
-            trim_existing_eff = bool(t_trim)
-    else:
-        trim_existing_eff = False if trim_existing is False or str(trim_existing).strip().lower() in ("no", "false", "0") else True
+    trim_existing_eff = _coerce_trim_existing(trim_existing, default=_coerce_trim_existing(target.get("trim_existing"), default=False))
+    if trim_existing is not None:
         target["trim_existing"] = trim_existing_eff
 
     # Accumulate total capital with stepup
@@ -1041,10 +1977,10 @@ def run_strategy_rebalance(strategy_id, stepup_amount=0.0, username=None, save_c
         trim_existing=trim_existing_eff
     )
 
-    # Next future rebalance date
-    _, next_rebal, _ = calculate_strategy_next_rebalance(exec_date, target["rebalance_day"])
+    # Next future rebalance date reusing already-loaded holidays
+    _, next_rebal, _ = calculate_strategy_next_rebalance(exec_date, target["rebalance_day"], holidays_set=holidays_set)
 
-    rebal_number = len([r for r in runs if r.get("run_type") == "REBALANCE"]) + 1
+    rebal_number = sum(1 for r in runs if r.get("run_type") == "REBALANCE") + 1
     rebal_run_entry = {
         "run_id": f"run_rebal_{uuid.uuid4().hex[:10]}",
         "run_type": "REBALANCE",
@@ -1077,9 +2013,8 @@ def run_strategy_rebalance(strategy_id, stepup_amount=0.0, username=None, save_c
     target["next_rebalance_date"] = next_rebal.isoformat()
     target["updated_at"] = now_iso
 
-    # Capital audit log for rebalance
     changes = portfolio.get("changes", {})
-    target.setdefault("capital_logs", []).append({
+    rebal_log = {
         "id": f"clog_{uuid.uuid4().hex[:8]}",
         "timestamp": now_iso,
         "type": "REBALANCE_EXECUTED",
@@ -1089,26 +2024,167 @@ def run_strategy_rebalance(strategy_id, stepup_amount=0.0, username=None, save_c
         "fees": portfolio["fees_paid"],
         "wallet_after": portfolio["wallet_balance"],
         "notes": f"Rebalance #{rebal_number} executed on {exec_date}. Added: {len(changes.get('added', []))}, Removed: {len(changes.get('removed', []))}, Retained: {len(changes.get('retained', []))}. Fees: ₹{portfolio['fees_paid']:.2f}. Wallet: ₹{portfolio['wallet_balance']:.2f}"
-    })
+    }
+    target.setdefault("capital_logs", []).append(rebal_log)
+    new_capital_logs.append(rebal_log)
 
-    save_user_momentum_smallcases(data, username)
+    set_fields = {
+        "holdings": target["holdings"],
+        "current_wallet": target["current_wallet"],
+        "current_portfolio_value": target["current_portfolio_value"],
+        "total_capital": target["total_capital"],
+        "total_pnl": target["total_pnl"],
+        "total_pnl_percent": target["total_pnl_percent"],
+        "total_fees_paid": target["total_fees_paid"],
+        "last_stepup_amount": target["last_stepup_amount"],
+        "next_rebalance_date": target["next_rebalance_date"],
+        "updated_at": target["updated_at"],
+        "amount_to_invest": target.get("amount_to_invest"),
+        "trim_existing": target.get("trim_existing"),
+    }
+    _persist_strategy_update(
+        username,
+        strategy_id,
+        target,
+        new_run=rebal_run_entry,
+        new_capital_logs=new_capital_logs,
+        set_fields=set_fields,
+    )
     return target
 
 
-def run_strategy_withdrawal(strategy_id, withdrawals, comments="", username=None):
+def _resolve_withdrawal_bounds(strategy):
+    """
+    Computes allowed withdrawal date bounds [min_date, max_date]:
+    - min_date: executed/scheduled date of the latest INIT or REBALANCE run
+    - max_date: min(next_rebalance_date, today_IST) so users cannot withdraw
+      before last rebalance, after next rebalance, or in the future.
+    Returns (min_date, max_date, today_d, next_rebal_d).
+    """
+    runs = strategy.get("runs") or []
+    last_rebal_d = None
+    for r in runs:
+        if r and r.get("run_type") in ("INIT", "REBALANCE"):
+            d_obj = _parse_store_date(r.get("executed_date") or r.get("scheduled_date"))
+            if d_obj is not None and (last_rebal_d is None or d_obj > last_rebal_d):
+                last_rebal_d = d_obj
+
+    if last_rebal_d is None:
+        last_rebal_d = _parse_store_date(strategy.get("start_date"))
+
+    today_d = now_ist().date()
+    next_rebal_d = _parse_store_date(strategy.get("next_rebalance_date"))
+    max_d = min(today_d, next_rebal_d) if next_rebal_d is not None else today_d
+    if last_rebal_d is not None and max_d < last_rebal_d:
+        max_d = last_rebal_d
+    return last_rebal_d, max_d, today_d, next_rebal_d
+
+
+def get_strategy_withdrawal_prices(strategy_id, target_date_str=None, symbols=None, username=None):
+    """
+    Returns closing prices for active strategy holdings on `target_date_str`
+    (or most recent prior trading day if weekend/holiday), along with valid date bounds.
+    """
+    target = _get_strategy_without_ranked_arrays(strategy_id, username=username)
+    if not target:
+        raise ValueError("Strategy not found.")
+
+    holdings = target.get("holdings") or []
+    min_d, max_d, today_d, next_rebal_d = _resolve_withdrawal_bounds(target)
+
+    if target_date_str:
+        w_date = _parse_store_date(target_date_str)
+        if w_date is None:
+            raise ValueError(f"Invalid withdrawal date: '{target_date_str}'")
+    else:
+        w_date = max_d
+
+    if w_date > today_d:
+        raise ValueError(
+            f"Withdrawal date ({w_date.strftime('%d/%m/%Y')}) cannot be in the future "
+            f"(today is {today_d.strftime('%d/%m/%Y')})."
+        )
+    if min_d is not None and w_date < min_d:
+        raise ValueError(
+            f"Withdrawal date ({w_date.strftime('%d/%m/%Y')}) cannot be earlier than "
+            f"last rebalance date ({min_d.strftime('%d/%m/%Y')})."
+        )
+    if next_rebal_d is not None and w_date > next_rebal_d:
+        raise ValueError(
+            f"Withdrawal date ({w_date.strftime('%d/%m/%Y')}) cannot be after "
+            f"next rebalance date ({next_rebal_d.strftime('%d/%m/%Y')})."
+        )
+
+    req_syms = [
+        str(s).strip().upper()
+        for s in (symbols or [h.get("symbol") for h in holdings])
+        if s
+    ]
+    req_syms = list(dict.fromkeys(req_syms))
+    holdings_by_sym = {str(h.get("symbol") or "").strip().upper(): h for h in holdings}
+
+    prices_out = {}
+    if req_syms:
+        from modules.momentum_smallcases.momentum_smallcases_calculator import (
+            prewarm_stock_prices_cache,
+            fetch_stock_daily_series,
+        )
+        win_min = (w_date - timedelta(days=20)).isoformat()
+        prewarm_stock_prices_cache(req_syms, min_date=win_min, max_date=w_date.isoformat())
+        for sym in req_syms:
+            try:
+                series = fetch_stock_daily_series(sym, target_cutoff_date=w_date, min_date=win_min)
+                if series:
+                    actual_dt, px = series[-1]
+                    actual_iso = actual_dt.isoformat() if hasattr(actual_dt, "isoformat") else str(actual_dt)[:10]
+                    prices_out[sym] = {
+                        "price": round(float(px), 2),
+                        "price_date": actual_iso,
+                        "exact_match": actual_iso == w_date.isoformat(),
+                    }
+                    continue
+            except Exception as ex:
+                logger.debug(f"Withdrawal price lookup fallback for {sym} on {w_date}: {ex}")
+            h = holdings_by_sym.get(sym, {})
+            fb_px = float(h.get("current_price") or h.get("buy_price") or 0.0)
+            prices_out[sym] = {
+                "price": round(fb_px, 2),
+                "price_date": None,
+                "exact_match": False,
+            }
+
+    return {
+        "success": True,
+        "date": w_date.isoformat(),
+        "min_date": min_d.isoformat() if min_d else None,
+        "max_date": max_d.isoformat() if max_d else None,
+        "next_rebalance_date": next_rebal_d.isoformat() if next_rebal_d else None,
+        "today": today_d.isoformat(),
+        "prices": prices_out,
+    }
+
+
+def _normalize_withdraw_destination(raw_mode):
+    val = str(raw_mode or "OUT_OF_WALLET").strip().upper().replace("-", "_").replace(" ", "_")
+    if val in ("TO_WALLET", "WALLET", "IN_WALLET", "INTO_WALLET"):
+        return "TO_WALLET"
+    if val in ("OUT_OF_WALLET", "OUT", "EXTERNAL", "BANK"):
+        return "OUT_OF_WALLET"
+    raise ValueError(f"Unsupported withdrawal type '{raw_mode}'. Choose 'TO_WALLET' or 'OUT_OF_WALLET'.")
+
+
+def run_strategy_withdrawal(strategy_id, withdrawals, comments="", username=None, withdraw_to="OUT_OF_WALLET", withdrawal_date=None):
     """
     Executes a partial or full withdrawal from active strategy holdings.
     - withdrawals: list of dicts: [{"symbol": "INFY", "quantity": 5, "price": 1820.0}, ...]
-    - Validates holdings and quantities
-    - Calculates realized P&L, fees, and updated holdings
-    - Creates SELL transactions with type 'WITHDRAWAL'
-    - Updates strategy portfolio value and total capital
-    - Appends a WITHDRAWAL run entry to strategy['runs']
-    - Saves updated strategy to MongoDB Atlas
+    - withdraw_to: "TO_WALLET" (credits net proceeds to smallcase wallet) or
+      "OUT_OF_WALLET" (cash exits smallcase; wallet balance unchanged).
+    - withdrawal_date: optional YYYY-MM-DD date within [last_rebalance_date, min(next_rebalance_date, today)].
+    - Validates holdings, date bounds, prices, and quantities.
+    - Creates SELL transactions with type 'WITHDRAWAL' and logs explicit withdrawal type.
+    - Appends a WITHDRAWAL run entry to strategy['runs'] and capital_logs.
     """
-    data = load_user_momentum_smallcases(username)
-    strategies = data.get("strategies", [])
-    target = next((s for s in strategies if s["id"] == strategy_id), None)
+    target = _get_strategy_without_ranked_arrays(strategy_id, username=username)
     if not target:
         raise ValueError("Strategy not found.")
 
@@ -1122,9 +2198,37 @@ def run_strategy_withdrawal(strategy_id, withdrawals, comments="", username=None
     if not withdrawals or not isinstance(withdrawals, list):
         raise ValueError("No stock withdrawals specified.")
 
+    dest_mode = _normalize_withdraw_destination(withdraw_to)
+    is_to_wallet = (dest_mode == "TO_WALLET")
+    dest_label = "To Wallet" if is_to_wallet else "Out of Wallet"
+    cap_log_type = "WITHDRAWAL_TO_WALLET" if is_to_wallet else "WITHDRAWAL_OUT_OF_WALLET"
+
+    min_d, max_d, today_d, next_rebal_d = _resolve_withdrawal_bounds(target)
+    if withdrawal_date:
+        w_date = _parse_store_date(withdrawal_date)
+        if w_date is None:
+            raise ValueError(f"Invalid withdrawal date format: '{withdrawal_date}'")
+        if w_date > today_d:
+            raise ValueError(
+                f"Withdrawal date ({w_date.strftime('%d/%m/%Y')}) cannot be in the future "
+                f"(today is {today_d.strftime('%d/%m/%Y')})."
+            )
+        if min_d is not None and w_date < min_d:
+            raise ValueError(
+                f"Withdrawal date ({w_date.strftime('%d/%m/%Y')}) must be on or after the "
+                f"last rebalance date ({min_d.strftime('%d/%m/%Y')})."
+            )
+        if next_rebal_d is not None and w_date > next_rebal_d:
+            raise ValueError(
+                f"Withdrawal date ({w_date.strftime('%d/%m/%Y')}) cannot be after the "
+                f"next rebalance date ({next_rebal_d.strftime('%d/%m/%Y')})."
+            )
+    else:
+        w_date = max_d
+
     now_dt = now_ist()
     now_iso = now_dt.isoformat()
-    now_date_str = now_dt.strftime("%Y-%m-%d")
+    exec_date_str = w_date.isoformat()
 
     holdings_by_sym = {h["symbol"].strip().upper(): h for h in current_holdings}
 
@@ -1152,7 +2256,11 @@ def run_strategy_withdrawal(strategy_id, withdrawals, comments="", username=None
             raise ValueError(f"Withdrawal quantity ({req_qty}) exceeds available holdings ({avail_qty}) for {sym}.")
 
         buy_price = float(h.get("buy_price") or 0.0)
-        curr_price = float(item.get("price") or h.get("current_price") or buy_price)
+        raw_item_price = item.get("price")
+        curr_price = float(raw_item_price if raw_item_price not in (None, "") else (h.get("current_price") or buy_price))
+        if curr_price <= 0:
+            raise ValueError(f"Withdrawal price must be positive for {sym}.")
+
         amt = round(req_qty * curr_price, 2)
         cost = round(req_qty * buy_price, 2)
         pnl = round(amt - cost, 2)
@@ -1181,10 +2289,12 @@ def run_strategy_withdrawal(strategy_id, withdrawals, comments="", username=None
             "pnl_percent": pnl_pct,
             "fee": fee,
             "type": "WITHDRAWAL",
+            "withdrawal_type": dest_mode,
+            "withdrawal_type_label": dest_label,
             "comments": item_comment,
             "notes": item_comment,
-            "date": now_date_str,
-            "run_title": f"Withdrawal #{withdrawal_num}",
+            "date": exec_date_str,
+            "run_title": f"Withdrawal #{withdrawal_num} ({dest_label})",
             "timestamp": now_iso
         }
         transactions.append(tx)
@@ -1218,11 +2328,20 @@ def run_strategy_withdrawal(strategy_id, withdrawals, comments="", username=None
     # Filter out holdings that now have 0 quantity
     updated_holdings = [h for h in current_holdings if h.get("quantity", 0) > 0]
 
-    # Adjust strategy invested capital and valuation
+    old_wallet = float(target.get("current_wallet") or 0.0)
+    net_withdrawn_proceeds = round(total_withdrawn_amount - total_withdrawn_fees, 2)
     curr_cap = float(target.get("total_capital") if target.get("total_capital") is not None else target.get("amount_to_invest", 0.0))
-    new_cap = max(0.0, round(curr_cap - total_withdrawn_cost, 2))
+
+    if is_to_wallet:
+        wallet_bal = round(old_wallet + max(0.0, net_withdrawn_proceeds), 2)
+        new_cap = curr_cap
+    else:
+        wallet_bal = old_wallet
+        new_cap = max(0.0, round(curr_cap - total_withdrawn_cost, 2))
+
     target["total_capital"] = new_cap
     target["amount_to_invest"] = new_cap
+    target["current_wallet"] = wallet_bal
 
     # Recalculate weights and remaining valuation
     total_remaining_val = sum(h.get("current_value", 0.0) for h in updated_holdings)
@@ -1234,7 +2353,6 @@ def run_strategy_withdrawal(strategy_id, withdrawals, comments="", username=None
         else:
             h["weight_percent"] = 0.0
 
-    wallet_bal = float(target.get("current_wallet") or 0.0)
     target["holdings"] = updated_holdings
     target["current_portfolio_value"] = round(total_remaining_val + wallet_bal, 2)
     target["total_fees_paid"] = round(target.get("total_fees_paid", 0.0) + total_withdrawn_fees, 2)
@@ -1250,12 +2368,16 @@ def run_strategy_withdrawal(strategy_id, withdrawals, comments="", username=None
     run_entry = {
         "run_id": f"run_wdr_{uuid.uuid4().hex[:10]}",
         "run_type": "WITHDRAWAL",
+        "withdrawal_type": dest_mode,
+        "withdrawal_type_label": dest_label,
+        "wallet_credited": is_to_wallet,
         "run_number": len(runs) + 1,
-        "title": f"Withdrawal #{withdrawal_num}",
-        "scheduled_date": now_date_str,
-        "executed_date": now_date_str,
+        "title": f"Withdrawal #{withdrawal_num} ({dest_label})",
+        "scheduled_date": exec_date_str,
+        "executed_date": exec_date_str,
         "comments": eff_comments,
         "total_withdrawn_amount": round(total_withdrawn_amount, 2),
+        "net_withdrawn_amount": net_withdrawn_proceeds,
         "total_withdrawn_pnl": round(total_withdrawn_pnl, 2),
         "total_withdrawn_cost": round(total_withdrawn_cost, 2),
         "fees_paid": round(total_withdrawn_fees, 2),
@@ -1274,24 +2396,59 @@ def run_strategy_withdrawal(strategy_id, withdrawals, comments="", username=None
     }
     runs.append(run_entry)
 
-    # Capital audit log for withdrawal
-    target.setdefault("capital_logs", []).append({
+    # Capital audit log for withdrawal (preserving withdrawal type & date)
+    wallet_note = (
+        f"Credited net ₹{net_withdrawn_proceeds:,.2f} to wallet."
+        if is_to_wallet
+        else "Withdrawn out of wallet (wallet balance unchanged)."
+    )
+    wdr_log = {
         "id": f"clog_{uuid.uuid4().hex[:8]}",
         "timestamp": now_iso,
-        "type": "WITHDRAWAL",
+        "withdrawal_date": exec_date_str,
+        "type": cap_log_type,
+        "withdrawal_type": dest_mode,
+        "withdrawal_type_label": dest_label,
         "run_id": run_entry["run_id"],
         "amount": round(total_withdrawn_amount, 2),
         "realized_pnl": round(total_withdrawn_pnl, 2),
         "fees": round(total_withdrawn_fees, 2),
         "wallet_after": wallet_bal,
-        "notes": f"Withdrawal #{withdrawal_num}: Withdrawn ₹{total_withdrawn_amount:,.2f} across {len(transactions)} stocks. Realized P&L: ₹{total_withdrawn_pnl:,.2f}. {eff_comments}".strip()
-    })
+        "notes": (
+            f"Withdrawal #{withdrawal_num} ({dest_label}, Date: {w_date.strftime('%d/%m/%Y')}): "
+            f"Withdrawn ₹{total_withdrawn_amount:,.2f} across {len(transactions)} stocks. "
+            f"Realized P&L: ₹{total_withdrawn_pnl:,.2f}. {wallet_note} {eff_comments}"
+        ).strip()
+    }
+    target.setdefault("capital_logs", []).append(wdr_log)
 
-    save_user_momentum_smallcases(data, username)
+    set_fields = {
+        "total_capital": target["total_capital"],
+        "amount_to_invest": target["amount_to_invest"],
+        "current_wallet": target["current_wallet"],
+        "holdings": target["holdings"],
+        "current_portfolio_value": target["current_portfolio_value"],
+        "total_fees_paid": target["total_fees_paid"],
+        "total_pnl": target["total_pnl"],
+        "total_pnl_percent": target["total_pnl_percent"],
+        "updated_at": target["updated_at"],
+    }
+    _persist_strategy_update(
+        username,
+        strategy_id,
+        target,
+        new_run=run_entry,
+        new_capital_logs=[wdr_log],
+        set_fields=set_fields,
+    )
     return {
         "success": True,
         "strategy": target,
         "run": run_entry,
+        "withdrawal_type": dest_mode,
+        "withdrawal_type_label": dest_label,
+        "withdrawal_date": exec_date_str,
+        "wallet_after": wallet_bal,
         "withdrawn_amount": round(total_withdrawn_amount, 2),
         "withdrawn_pnl": round(total_withdrawn_pnl, 2),
         "withdrawn_count": len(transactions),
@@ -1307,37 +2464,26 @@ def run_strategy_all_rebalances(strategy_id, stepup_per_rebalance=0.0, up_to_dat
     Pre-warms only the needed historical window upfront for fast, timeout-safe execution.
     """
     import time
-    from modules.momentum_smallcases.momentum_smallcases_calculator import save_price_cache
+    from modules.momentum_smallcases.momentum_smallcases_calculator import (
+        save_price_cache,
+        clear_db_prices_cache,
+        get_official_trading_holidays,
+    )
 
-    data = load_user_momentum_smallcases(username)
-    strategies = data.get("strategies", [])
-    target = next((x for x in strategies if x.get("id") == strategy_id), None)
+    target = _get_strategy_without_ranked_arrays(strategy_id, username=username)
     if not target:
         raise ValueError("Strategy not found")
 
     if trim_existing is not None:
-        trim_existing_eff = False if trim_existing is False or str(trim_existing).strip().lower() in ("no", "false", "0") else True
+        trim_existing_eff = _coerce_trim_existing(trim_existing)
         target["trim_existing"] = trim_existing_eff
-        save_user_momentum_smallcases(data, username)
+        target["updated_at"] = datetime.now().isoformat()
+        _persist_strategy_update(username, strategy_id, target)
     else:
-        t_trim = target.get("trim_existing")
-        if t_trim is None:
-            trim_existing_eff = False
-        elif isinstance(t_trim, str):
-            trim_existing_eff = t_trim.strip().lower() not in ("no", "false", "0")
-        else:
-            trim_existing_eff = bool(t_trim)
+        trim_existing_eff = _coerce_trim_existing(target.get("trim_existing"), default=False)
 
     today_d = now_ist().date()
-    if up_to_date:
-        if isinstance(up_to_date, str):
-            cutoff_d = datetime.strptime(up_to_date[:10], "%Y-%m-%d").date()
-        elif isinstance(up_to_date, datetime):
-            cutoff_d = up_to_date.date()
-        else:
-            cutoff_d = up_to_date
-    else:
-        cutoff_d = today_d
+    cutoff_d = _parse_store_date(up_to_date, fallback=today_d) if up_to_date else today_d
 
     if cutoff_d > today_d:
         raise ValueError(
@@ -1345,21 +2491,20 @@ def run_strategy_all_rebalances(strategy_id, stepup_per_rebalance=0.0, up_to_dat
             f"Cutoff date cannot be in the future (today is {today_d.strftime('%d/%m/%Y')})."
         )
 
-    # 0. Pre-warm daily quotes for [earliest needed date - 450d .. cutoff_d]
+    # 0. Pre-load constituents & holidays ONCE, and pre-warm daily quotes for [earliest needed date - 450d .. cutoff_d]
     constituents = get_strategy_index_constituents(
         target["index_id"],
         target.get("index_type", "manual"),
         username=username
     )
+    holidays_set = get_official_trading_holidays()
     symbols_to_warm = _extract_strategy_symbols(target, constituents)
     if symbols_to_warm:
-        base_d = cutoff_d
-        try:
-            if target.get("status") == "DRAFT" or not target.get("runs"):
-                base_d = datetime.strptime(target["start_date"][:10], "%Y-%m-%d").date()
-            elif target.get("next_rebalance_date"):
-                base_d = datetime.strptime(target["next_rebalance_date"][:10], "%Y-%m-%d").date()
-        except Exception:
+        if target.get("status") == "DRAFT" or not target.get("runs"):
+            base_d = _parse_store_date(target.get("start_date"), fallback=cutoff_d)
+        elif target.get("next_rebalance_date"):
+            base_d = _parse_store_date(target.get("next_rebalance_date"), fallback=cutoff_d)
+        else:
             base_d = cutoff_d
         win_min = (base_d - timedelta(days=450)).isoformat()
         win_max = cutoff_d.isoformat()
@@ -1376,75 +2521,83 @@ def run_strategy_all_rebalances(strategy_id, stepup_per_rebalance=0.0, up_to_dat
     rebalances_executed = 0
     batch_start_time = time.time()
     max_batch_seconds = 22.0  # Guard synchronous HTTP calls below reverse proxy timeout
-
-    # 1. Execute Init if DRAFT or no runs
-    if target.get("status") == "DRAFT" or not target.get("runs"):
-        start_d = datetime.strptime(target["start_date"][:10], "%Y-%m-%d").date()
-        if start_d > cutoff_d:
-            raise ValueError(f"Smallcase start date ({start_d}) is after cutoff date ({cutoff_d}). Cannot run Init.")
-        target = run_strategy_init(strategy_id, username=username)
-        init_executed = True
-
-    # 2. Iteratively execute all due rebalances up to cutoff_d
-    max_rebal_runs = 150
-    last_processed_date = None
     reached_time_limit = False
 
-    while rebalances_executed < max_rebal_runs:
-        sched_rebal_str = target.get("next_rebalance_date")
-        if not sched_rebal_str:
-            break
-        rebal_d = datetime.strptime(sched_rebal_str[:10], "%Y-%m-%d").date()
-        if rebal_d > cutoff_d:
-            break
-        if last_processed_date and rebal_d <= last_processed_date:
-            logger.warning(f"Rebalance date did not advance: {rebal_d} <= {last_processed_date}")
-            break
-
-        if enforce_time_limit and rebalances_executed > 0 and (time.time() - batch_start_time) > max_batch_seconds:
-            logger.info(f"Batch time limit ({max_batch_seconds}s) reached after {rebalances_executed} rebalances; returning cleanly.")
-            reached_time_limit = True
-            break
-
-        try:
-            target = run_strategy_rebalance(
+    try:
+        # 1. Execute Init if DRAFT or no runs
+        if target.get("status") == "DRAFT" or not target.get("runs"):
+            start_d = _parse_store_date(target.get("start_date"))
+            if start_d and start_d > cutoff_d:
+                raise ValueError(f"Smallcase start date ({start_d}) is after cutoff date ({cutoff_d}). Cannot run Init.")
+            target = run_strategy_init(
                 strategy_id,
-                stepup_amount=float(stepup_per_rebalance or 0.0),
                 username=username,
-                save_cache=False,
-                trim_existing=trim_existing_eff
+                _target_ref=target,
+                _preloaded_constituents=constituents,
+                _preloaded_holidays=holidays_set,
+                _save_cache=False,
             )
-            rebalances_executed += 1
-            last_processed_date = rebal_d
-        except ValueError as ve:
-            # Stop cleanly if holiday adjustment pushed next rebalance beyond today
-            if (rebalances_executed > 0 or init_executed) and "future date" in str(ve).lower():
+            init_executed = True
+
+        # 2. Iteratively execute all due rebalances up to cutoff_d
+        max_rebal_runs = 150
+        last_processed_date = None
+
+        while rebalances_executed < max_rebal_runs:
+            sched_rebal_str = target.get("next_rebalance_date")
+            if not sched_rebal_str:
                 break
-            err_msg = f"Completed {'Init and ' if init_executed else ''}{rebalances_executed} rebalance(s), but stopped on {rebal_d}: {str(ve)}"
-            if rebalances_executed > 0 or init_executed:
-                raise RuntimeError(err_msg)
-            raise
-        except Exception as e:
-            logger.error(f"Error during batch rebalance on {rebal_d}: {e}", exc_info=True)
-            err_msg = f"Completed {'Init and ' if init_executed else ''}{rebalances_executed} rebalance(s), but stopped on {rebal_d}: {str(e)}"
-            if rebalances_executed > 0 or init_executed:
-                raise RuntimeError(err_msg)
-            else:
+            rebal_d = _parse_store_date(sched_rebal_str)
+            if not rebal_d or rebal_d > cutoff_d:
+                break
+            if last_processed_date and rebal_d <= last_processed_date:
+                logger.warning(f"Rebalance date did not advance: {rebal_d} <= {last_processed_date}")
+                break
+
+            if enforce_time_limit and rebalances_executed > 0 and (time.time() - batch_start_time) > max_batch_seconds:
+                logger.info(f"Batch time limit ({max_batch_seconds}s) reached after {rebalances_executed} rebalances; returning cleanly.")
+                reached_time_limit = True
+                break
+
+            try:
+                target = run_strategy_rebalance(
+                    strategy_id,
+                    stepup_amount=float(stepup_per_rebalance or 0.0),
+                    username=username,
+                    save_cache=False,
+                    trim_existing=trim_existing_eff,
+                    _target_ref=target,
+                    _preloaded_constituents=constituents,
+                    _preloaded_holidays=holidays_set,
+                )
+                rebalances_executed += 1
+                last_processed_date = rebal_d
+            except ValueError as ve:
+                if (rebalances_executed > 0 or init_executed) and "future date" in str(ve).lower():
+                    break
+                err_msg = f"Completed {'Init and ' if init_executed else ''}{rebalances_executed} rebalance(s), but stopped on {rebal_d}: {str(ve)}"
+                if rebalances_executed > 0 or init_executed:
+                    raise RuntimeError(err_msg)
                 raise
+            except Exception as e:
+                logger.error(f"Error during batch rebalance on {rebal_d}: {e}", exc_info=True)
+                err_msg = f"Completed {'Init and ' if init_executed else ''}{rebalances_executed} rebalance(s), but stopped on {rebal_d}: {str(e)}"
+                if rebalances_executed > 0 or init_executed:
+                    raise RuntimeError(err_msg)
+                else:
+                    raise
 
-    # Save disk price cache once after batch completes
-    save_price_cache()
+        save_price_cache()
+    finally:
+        clear_db_prices_cache()
 
-    final_target = get_user_strategy(strategy_id, username=username) or target
+    final_target = get_user_strategy(strategy_id, username=username, include_all_ranked=False) or target
     total_runs = (1 if init_executed else 0) + rebalances_executed
 
     if total_runs == 0:
         next_dt_str = final_target.get('next_rebalance_date', '')
-        try:
-            next_d_obj = datetime.strptime(next_dt_str[:10], "%Y-%m-%d").date()
-            next_fmt = next_d_obj.strftime("%d/%m/%Y")
-        except Exception:
-            next_fmt = next_dt_str
+        next_d_obj = _parse_store_date(next_dt_str)
+        next_fmt = next_d_obj.strftime("%d/%m/%Y") if next_d_obj else next_dt_str
         raise ValueError(
             f"Cannot execute rebalance for future date ({next_fmt}). "
             f"Smallcase is already up to date up to today ({today_d.strftime('%d/%m/%Y')})."
@@ -1471,12 +2624,37 @@ def run_strategy_all_rebalances(strategy_id, stepup_per_rebalance=0.0, up_to_dat
 
 
 def delete_user_strategy(strategy_id, username=None):
-    """Deletes a strategy by ID."""
+    """Deletes a strategy by ID atomically across user doc and externalized run collections."""
     user = _resolve_username(username)
+    target_id = str(strategy_id or "").strip()
+
+    try:
+        import db_store
+        if db_store.db is not None and user:
+            db = db_store.db
+            col = db["momentum_smallcases"]
+            res = col.update_one(
+                {"_id": _safe_user(user)},
+                {"$pull": {"data.strategies": {"id": target_id}}}
+            )
+            deleted = res.modified_count > 0
+            if not deleted and user != 'admin':
+                res_admin = col.update_one(
+                    {"_id": _safe_user('admin')},
+                    {"$pull": {"data.strategies": {"id": target_id}}}
+                )
+                deleted = res_admin.modified_count > 0
+            if deleted:
+                db[RUNS_COLLECTION].delete_many({"strategy_id": target_id})
+                db[RANKED_SNAPSHOTS_COLLECTION].delete_many({"strategy_id": target_id})
+                return True
+            return False
+    except Exception as e:
+        logger.warning(f"MongoDB targeted delete_user_strategy fallback for {user}/{target_id}: {e}")
+
     data = load_user_momentum_smallcases(user)
     strategies = data.get("strategies", [])
     initial_len = len(strategies)
-    target_id = str(strategy_id or "").strip()
     strategies = [x for x in strategies if str(x.get("id", "")).strip() != target_id]
     if len(strategies) != initial_len:
         data["strategies"] = strategies
@@ -1523,6 +2701,8 @@ def reset_all_momentum_data(username=None):
         if db is not None:
             safe_user = _safe_user(user)
             db["momentum_smallcases"].delete_many({"_id": safe_user})
+            db[RUNS_COLLECTION].delete_many({"username": safe_user})
+            db[RANKED_SNAPSHOTS_COLLECTION].delete_many({"username": safe_user})
     except Exception as e:
         logger.warning(f"Error resetting MongoDB momentum_smallcases: {e}")
 
@@ -1549,7 +2729,7 @@ def get_strategy_consolidated_stocks(strategy_id, username=None):
     Ordered by longer holding period descending.
     Includes consolidated summary total at end.
     """
-    strat = get_user_strategy(strategy_id, username=username)
+    strat = _get_strategy_without_ranked_arrays(strategy_id, username=username)
     if not strat:
         raise ValueError("Strategy not found")
 
@@ -1569,12 +2749,7 @@ def get_strategy_consolidated_stocks(strategy_id, username=None):
         }
 
     def parse_d(d_str):
-        if not d_str:
-            return None
-        try:
-            return datetime.strptime(str(d_str)[:10], "%Y-%m-%d").date()
-        except Exception:
-            return None
+        return _parse_store_date(d_str)
 
     def fmt_month_year(d_obj, d_str=None):
         if not d_obj and d_str:
@@ -1905,6 +3080,13 @@ def start_async_execution_job(job_type, strategy_id, username=None, **kwargs):
                     _EXECUTION_JOBS[job_id]["completed_at"] = datetime.now().isoformat()
                     _EXECUTION_JOBS[job_id]["runs_count"] = runs_cnt
                     _EXECUTION_JOBS[job_id]["result"] = res
+                    # Trim retained heavy result blobs on older COMPLETED jobs so RAM stays bounded
+                    completed_with_res = [
+                        k for k, v in _EXECUTION_JOBS.items()
+                        if k != job_id and v.get("status") == "COMPLETED" and v.get("result") is not None
+                    ]
+                    for old_k in completed_with_res[:-1]:
+                        _EXECUTION_JOBS[old_k]["result"] = None
                     _save_jobs_to_disk_locked()
             logger.info(f"Async job {job_id} ({job_type}) completed successfully")
         except Exception as e:

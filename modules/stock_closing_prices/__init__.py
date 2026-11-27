@@ -25,17 +25,27 @@ def get_all_closing_prices():
     """
     try:
         q = request.args.get("q", "").strip().upper()
+        scope = str(request.args.get("scope", "all")).strip().lower()
         limit_param = request.args.get("limit")
         limit = int(limit_param) if limit_param and limit_param.isdigit() else None
 
         records = db_store.load_stock_closing_prices_db(summary_only=True, limit=limit) or {}
-        
+        official_set = set(stock_closing_prices_provider.get_official_index_stocks().keys())
+        custom_set = set(stock_closing_prices_provider.get_custom_tracked_stocks(active_only=False).keys())
+
         results = []
         for sym, doc in records.items():
+            in_official = sym in official_set
+            in_custom = sym in custom_set
+            if scope == "index" and not in_official:
+                continue
+            if scope == "custom" and not in_custom:
+                continue
             if q:
                 cname = str(doc.get("company_name", "")).upper()
                 if q not in sym and q not in cname:
                     continue
+            doc["is_custom"] = in_custom and not in_official
             results.append(doc)
 
         # Sort alphabetically by symbol
@@ -119,11 +129,13 @@ def admin_stock_closing_prices_sync():
         force = bool(payload.get("force", False))
         full_resync = bool(payload.get("full_resync", False))
         start_date = payload.get("start_date") or "2012-01-01"
+        scope = str(payload.get("scope") or "index").strip().lower()
 
         res = stock_closing_prices_provider.start_background_sync(
             force=force,
             full_resync=full_resync,
-            start_date=start_date
+            start_date=start_date,
+            scope=scope,
         )
         return jsonify(res)
     except Exception as e:
